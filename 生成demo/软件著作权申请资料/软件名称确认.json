@@ -1,0 +1,15 @@
+{
+  "software_name": "StudioAgent AI视频制片平台软件",
+  "software_short_name": "StudioAgent",
+  "version": "V0.1.0",
+  "appears_in": [
+    "申请表信息",
+    "正式资料文件名",
+    "代码 Word 页眉",
+    "操作手册标题与页眉"
+  ],
+  "software_name_confirmed": true,
+  "confirmation_note": "演示项目：名称与版本号已确认",
+  "confirmed_at": "2026-09-30T03:03:54+00:00",
+  "confirmed_content_sha256": "160df0d2643c8d3195eb0d61042d95b30a4c54197ac08077ffd73199f086642f"
+}

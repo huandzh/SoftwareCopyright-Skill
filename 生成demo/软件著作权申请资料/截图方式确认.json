@@ -1,6 +1,7 @@
 {
   "screenshot_method": "skip",
   "screenshot_method_confirmed": true,
-  "confirmation_note": "用户选择跳过截图，正式材料保留可见截图预留位置",
-  "confirmed_at": "2026-04-29T09:07:56+00:00"
+  "confirmation_note": "演示项目暂不截图，操作手册保留截图预留位",
+  "confirmed_at": "2026-09-30T03:04:11+00:00",
+  "confirmed_content_sha256": "ed240f7fdc09da889cdbd887dc06f25a783ceb3dc6f370607c276c7707ef2063"
 }

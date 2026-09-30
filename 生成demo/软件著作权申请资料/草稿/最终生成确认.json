@@ -1,5 +1,27 @@
 {
   "markdown_confirmed": true,
-  "confirmation_note": "用户确认 Markdown 草稿，可以进入正式 Word/TXT 生成",
-  "confirmed_at": "2026-04-29T09:08:29+00:00"
+  "confirmation_note": "演示：最终确认",
+  "confirmed_at": "2026-09-30T03:07:13+00:00",
+  "draft_file_sha256": {
+    "草稿/业务理解.json": "042d36fc099b747398daf6227a3078460d92330526750fdcf47ab636deae447f",
+    "草稿/业务理解.md": "e03882027cda9ff352685c5e7779ea206543a37ee48ead7cbf5df6601520ff6d",
+    "草稿/业务理解模型稿.json": "5296dadf93d08595383b7b031d46b36331263c62a324d3e6b6a5c53245990a5d",
+    "草稿/业务理解模型稿模板.json": "49dc6971ad0d37e532ba37da9493b20bc7ed203b9b62a5b03a16232f0d1b769e",
+    "草稿/业务理解证据.json": "e14e6b00b732e2a1122a928308ec2c38de60b8b130ce8844470a99434b77f4a6",
+    "草稿/业务理解证据.md": "7b43db56ded10c7fb041c4b7c7fd5b654d3802c35d8b18230f3f2b13085efd9f",
+    "草稿/代码-前40页.md": "8d13e6cd065b1a1bf35528921d7f93cb8d3b9c2706cac5e02557713ce8a68bc0",
+    "草稿/代码-后40页.md": "40cd746d0dc475a936db2259dada787bb29ba1e6f182f95e73e97d0826d3ab9e",
+    "草稿/代码提取清单.json": "b407fed45b0e24504ff76490bbc85de948ba956fa39888d37a01b2e18ea4aeef",
+    "草稿/代码提取清单.md": "63beb15773cfa54af8116e157256f02c6f9ed5e70f788f43a730e0f473a2c942",
+    "草稿/代码文件候选清单.md": "7bc284332c7cfcb10eff0324a0bbdba51fbd2dfa9834a748edd24dab410f3bf9",
+    "草稿/代码文件选择.json": "9429eb0f4f3d7e855d9ce156333e90df753392a9f4f99c30416735619eccc1ea",
+    "草稿/操作手册.md": "804cf848b9d3154d4e7b368c052cfed59e0cd67c217352746bba5f4f707fd4b8",
+    "草稿/操作手册自检记录.json": "3f0cd5e9aa7ca963b473f689035b7076e29af8cb7ecf1873b5a631ac93c30ba1",
+    "草稿/操作手册自检记录.md": "1dbe695ae4532aaecb3c39d772a689768265b448876e8d5182db07f781691a49",
+    "草稿/申请表信息.md": "58c979dcb189213658e0e1c5c21590a8dfc1bee071568ec9a1b532ac2e0685dc",
+    "草稿/申请表字段确认.json": "c6978dc298920d921df9978ac9387a869d2cdfec560cdb1017364861cd0729cf",
+    "草稿/申请表字段答案.json": "0c5fb05ceabf131397da41e031c085f757c45097e23aa83a90e5139b1b57111d",
+    "截图方式确认.json": "bf075c3f21c096cee22c627ff2b3fa3cafcfb340a7748ece619ae76f7492d209"
+  },
+  "confirmed_content_sha256": "b3d068cbf5d94f04d6f46440463e85452eb39d69972cef53fe5a1a0f0d732566"
 }

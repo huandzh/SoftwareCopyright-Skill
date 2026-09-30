@@ -1,0 +1,119 @@
+/* 全局样式：深色工作台主题，供整个应用复用 */
+
+/* 基础重置：去掉浏览器默认边距，统一盒模型 */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* 滚动条样式，避免深色背景下出现过亮的默认滚动条 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* 候选素材缩略图统一裁切，避免不同比例撑破卡片 */
+.candidate-thumb {
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #0f172a;
+}
+
+/* 对话气泡里的长链接与文件路径需要自动换行 */
+.chat-bubble {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* 生成中的占位动画 */
+@keyframes pulse-soft {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.generating {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+/* 打印或导出预览时隐藏交互按钮 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.compare-grid img {
+  border-radius: 6px;
+  background: #0f172a;
+}
+
+.export-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #0ea5e9, #22d3ee);
+}
+
+.notice-badge {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  text-align: center;
+}
+
+.export-summary {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.notice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.notice-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #cbd5f5;
+}
