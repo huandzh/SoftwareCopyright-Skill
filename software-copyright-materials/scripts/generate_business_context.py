@@ -10,7 +10,20 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from common import ensure_dir, is_document_candidate, iter_project_files, read_json, read_text, rel, write_json
+from common import (
+    MAIN_FUNCTION_LONG_MAX,
+    MAIN_FUNCTION_LONG_MIN,
+    MAIN_FUNCTION_SHORT_LIMIT,
+    TECHNICAL_CHARACTERISTIC_TAGS,
+    ensure_dir,
+    is_document_candidate,
+    iter_project_files,
+    read_json,
+    read_text,
+    rel,
+    split_tag_values,
+    write_json,
+)
 
 
 MAX_DOC_CHARS = 80_000
@@ -226,7 +239,8 @@ def write_model_template(path: Path, evidence: dict[str, Any]) -> None:
         "operation_flow": [],
         "application_purpose": "",
         "main_functions": "",
-        "technical_characteristics": "",
+        "main_functions_short": "",
+        "technical_characteristics": [],
         "software_technical_option": "应用软件",
         "software_category": "应用软件",
         "manual_sections": [
@@ -268,6 +282,8 @@ def write_model_template(path: Path, evidence: dict[str, Any]) -> None:
             "manual_modules 要按当前项目真实页面、导航入口、按钮、输入限制、系统反馈和截图位置编写，不能只写抽象功能名。",
             "不要照抄范本文案；范本只说明手册需要具体、可操作、能给审核员看懂。",
             "不要用关键词表决定行业和功能；必须能从项目证据或用户补充中解释来源。",
+            f"main_functions 写 500~1300 字长版（供操作手册和长版表单使用）；main_functions_short 写 ≤{MAIN_FUNCTION_SHORT_LIMIT} 字的官网短版，可留空由脚本压缩长版生成。",
+            "technical_characteristics 必须是官网标签数组，可选标签：" + "、".join(TECHNICAL_CHARACTERISTIC_TAGS) + "；不要写自由文本。",
         ],
     }
     write_json(path, template)
@@ -296,6 +312,25 @@ def required_text(data: dict[str, Any], field: str) -> str:
     return value
 
 
+def required_technical_tags(value: Any) -> str:
+    """技术特点 must be one or more official tags, never free-form text."""
+    if isinstance(value, list):
+        tags = [str(item).strip() for item in value if str(item).strip()]
+    else:
+        tags = split_tag_values(value)
+    if not tags:
+        raise SystemExit("Model context field cannot be empty: technical_characteristics")
+    unknown = [tag for tag in tags if tag not in TECHNICAL_CHARACTERISTIC_TAGS]
+    if unknown:
+        raise SystemExit(
+            "Model context technical_characteristics must use official tags only; unknown: "
+            + "、".join(unknown)
+            + "；allowed: "
+            + "、".join(TECHNICAL_CHARACTERISTIC_TAGS)
+        )
+    return "、".join(dict.fromkeys(tags))
+
+
 def effective_len(value: str) -> int:
     return len(re.sub(r"\s+", "", value))
 
@@ -304,15 +339,22 @@ def normalize_model_context(model: dict[str, Any], evidence: dict[str, Any], web
     industry = required_text(model, "industry")
     application_purpose = required_text(model, "application_purpose")
     main_functions = required_text(model, "main_functions")
-    technical_characteristics = required_text(model, "technical_characteristics")
+    technical_characteristics = required_technical_tags(model.get("technical_characteristics"))
+    main_functions_short = str(model.get("main_functions_short") or "").strip()
     if len(industry) > 50:
         raise SystemExit("Model context field exceeds 50 characters: industry")
     if len(application_purpose) > 50:
         raise SystemExit("Model context field exceeds 50 characters: application_purpose")
     main_function_chars = effective_len(main_functions)
-    if not 500 <= main_function_chars <= 1300:
+    if not MAIN_FUNCTION_LONG_MIN <= main_function_chars <= MAIN_FUNCTION_LONG_MAX:
         raise SystemExit(
-            f"Model context field main_functions must contain 500-1300 non-whitespace characters; got {main_function_chars}"
+            "Model context field main_functions must contain "
+            f"{MAIN_FUNCTION_LONG_MIN}-{MAIN_FUNCTION_LONG_MAX} non-whitespace characters; got {main_function_chars}"
+        )
+    if main_functions_short and effective_len(main_functions_short) > MAIN_FUNCTION_SHORT_LIMIT:
+        raise SystemExit(
+            "Model context field main_functions_short must stay within "
+            f"{MAIN_FUNCTION_SHORT_LIMIT} characters"
         )
     if len(technical_characteristics) > 100:
         raise SystemExit("Model context field exceeds 100 characters: technical_characteristics")
@@ -374,6 +416,7 @@ def normalize_model_context(model: dict[str, Any], evidence: dict[str, Any], web
         "operation_flow": required_list(model.get("operation_flow"), "operation_flow"),
         "application_purpose": application_purpose,
         "main_functions": main_functions,
+        "main_functions_short": main_functions_short,
         "technical_characteristics": technical_characteristics,
         "software_technical_option": str(model.get("software_technical_option") or "应用软件"),
         "software_category": str(model.get("software_category") or "应用软件"),
@@ -448,8 +491,9 @@ def write_context_md(path: Path, context: dict[str, Any]) -> None:
             "## 申请表建议口径",
             "",
             f"- 开发目的：{context['application_purpose']}",
-            f"- 软件的主要功能：{context['main_functions']}",
-            f"- 技术特点：{context['technical_characteristics']}",
+            f"- 软件的主要功能（短版，官网字段，≤{MAIN_FUNCTION_SHORT_LIMIT}字）：{context.get('main_functions_short') or '未单独提供，由脚本从长版压缩生成'}",
+            f"- 软件的主要功能（详细版备用，{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX}字）：{context['main_functions']}",
+            f"- 技术特点标签：{context['technical_characteristics']}",
             f"- 软件的技术特点选项：{context['software_technical_option']}",
             f"- 软件分类：{context['software_category']}",
             "",

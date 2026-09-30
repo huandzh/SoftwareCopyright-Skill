@@ -272,6 +272,47 @@ CODE_MAX_COLUMNS = 90
 CODE_SLICE_PAGE_CHOICES = (30, 40)
 CODE_SLICE_PAGES_DEFAULT = 40
 
+# Codes are submitted as the first/last 30 pages by the official form text, but
+# the intermediate agencies this flavour works with ask for 20 extra pages, so
+# the default is 40 + 40. Keep both options so a project can switch back.
+CODE_SLICE_PAGE_NOTE = "官网表单写前后各 30 页；本 flavour 走中间代理，默认前后各 40 页（多提供 20 页）"
+
+# Application form field rules (2026 form: 主要功能 is limited to 200 characters).
+MAIN_FUNCTION_SHORT_LIMIT = 200
+MAIN_FUNCTION_LONG_MIN = 500
+MAIN_FUNCTION_LONG_MAX = 1300
+MAIN_FUNCTION_DETAIL_FIELD = "软件的主要功能（详细版）"
+MAIN_FUNCTION_MODE_FIELD = "主要功能口径"
+
+# Official 技术特点 multi-select tags. The list is copied from the form the
+# project owner submitted; refresh it when the official list changes.
+TECHNICAL_CHARACTERISTIC_TAGS = (
+    "APP",
+    "VR软件",
+    "5G软件",
+    "人工智能软件",
+    "信息安全软件",
+    "大数据软件",
+    "小程序",
+    "云计算软件",
+    "医疗软件",
+    "地理信息软件",
+    "教育软件",
+    "智慧城市软件",
+    "物联网软件",
+    "网页应用",
+    "游戏软件",
+    "金融软件",
+)
+
+IDENTITY_FILE_NAME = "软件名称确认.json"
+IDENTITY_APPEARANCES = (
+    "申请表信息",
+    "正式资料文件名",
+    "代码 Word 页眉",
+    "操作手册标题与页眉",
+)
+
 CONFIRMATION_METADATA_KEYS = {
     "user_confirmed",
     "confirmation_note",
@@ -307,6 +348,70 @@ def code_output_slice_pages(name: str) -> int | None:
     """Read the required page count from ``...-代码(前40页).docx`` style names."""
     match = CODE_DOCX_SLICE_RE.search(name)
     return int(match.group("pages")) if match else None
+
+
+def normalize_identity(value: Any) -> str:
+    return re.sub(r"\s+", "", str(value or ""))
+
+
+def split_tag_values(value: Any) -> list[str]:
+    return [part.strip() for part in re.split(r"[、,，;；/|]+", str(value or "")) if part.strip()]
+
+
+def confirmed_identity(workdir: Path) -> dict[str, Any]:
+    """Return the confirmed software name/version block, or ``{}`` when unusable."""
+    path = workdir / IDENTITY_FILE_NAME
+    if not path.is_file():
+        return {}
+    try:
+        data = read_json(path)
+    except Exception:
+        return {}
+    if not data.get("software_name_confirmed"):
+        return {}
+    if not confirmation_is_current(data):
+        return {}
+    return data
+
+
+def identity_issue(workdir: Path) -> str | None:
+    """Describe why the software name gate is not satisfied yet."""
+    path = workdir / IDENTITY_FILE_NAME
+    if not path.is_file():
+        return (
+            "软件全称/版本号尚未确认：请先与用户确认软件全称、软件简称和版本号，再运行 "
+            'confirm_stage.py --workdir 软件著作权申请资料 --stage software-name '
+            '--software-name "<软件全称>" --version "<版本号>"'
+        )
+    try:
+        data = read_json(path)
+    except Exception as exc:
+        return f"{IDENTITY_FILE_NAME} 无法读取：{exc}"
+    if not data.get("software_name_confirmed"):
+        return "软件全称/版本号尚未确认：请记录 software-name 门禁"
+    if not confirmation_is_current(data):
+        return "软件全称/版本号在确认后已被修改：请重新确认 software-name 门禁"
+    return None
+
+
+def identity_mismatch_issues(workdir: Path, software_name: str = "", version: str = "") -> list[str]:
+    """Check a later draft against the confirmed software name/version."""
+    data = confirmed_identity(workdir)
+    if not data:
+        return []
+    issues: list[str] = []
+    confirmed_name = str(data.get("software_name") or "")
+    confirmed_version = str(data.get("version") or "")
+    if software_name and normalize_identity(software_name) != normalize_identity(confirmed_name):
+        issues.append(
+            f"当前软件全称“{software_name}”与已确认名称“{confirmed_name}”不一致；"
+            "软件全称会同时出现在申请表、正式文件名、代码 Word 页眉、操作手册标题与页眉，请统一后重新确认"
+        )
+    if version and normalize_identity(version) != normalize_identity(confirmed_version):
+        issues.append(
+            f"当前版本号“{version}”与已确认版本号“{confirmed_version}”不一致；请统一后重新确认"
+        )
+    return issues
 
 
 def is_excluded(path: Path) -> bool:

@@ -10,20 +10,31 @@ import re
 from typing import Any
 
 from common import (
+    IDENTITY_APPEARANCES,
+    IDENTITY_FILE_NAME,
+    MAIN_FUNCTION_DETAIL_FIELD,
+    MAIN_FUNCTION_LONG_MAX,
+    MAIN_FUNCTION_LONG_MIN,
+    MAIN_FUNCTION_MODE_FIELD,
+    MAIN_FUNCTION_SHORT_LIMIT,
+    TECHNICAL_CHARACTERISTIC_TAGS,
     confirmation_is_current,
     confirmation_payload_sha256,
     draft_completeness_issues,
     draft_snapshot,
     file_sha256,
+    identity_issue,
+    identity_mismatch_issues,
     read_json,
+    split_tag_values,
     write_json,
 )
 
 
-MAIN_FUNCTION_MIN_CHARS = 500
-MAIN_FUNCTION_MAX_CHARS = 1300
 SCREENSHOT_METHODS = {"playwright-cli", "user-supplied", "skip"}
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+MAIN_FUNCTION_LONG_MODE_KEYS = ("长版", "详细", "500", "1300")
+SOFTWARE_NAME_SUFFIXES = ("软件", "平台", "系统", "工具", "程序", "网站", "客户端", "引擎")
 FIELD_LIMITS = {
     "开发的硬件环境": 50,
     "运行的硬件环境": 50,
@@ -107,6 +118,58 @@ def application_field_value(md_path: Path, field_name: str) -> str:
     return ""
 
 
+def main_function_issues(md_path: Path) -> list[str]:
+    """Validate 主要功能 against the 200-character form limit and the long-form backup."""
+    issues: list[str] = []
+    short = application_field_value(md_path, "软件的主要功能")
+    detail = application_field_value(md_path, MAIN_FUNCTION_DETAIL_FIELD)
+    mode = application_field_value(md_path, MAIN_FUNCTION_MODE_FIELD)
+    long_mode = any(key in mode for key in MAIN_FUNCTION_LONG_MODE_KEYS)
+    if short and "待用户确认" not in short:
+        count = effective_len(short)
+        if long_mode:
+            if count < MAIN_FUNCTION_LONG_MIN or count > MAIN_FUNCTION_LONG_MAX:
+                issues.append(
+                    f"➤软件的主要功能：当前 {count} 字；{MAIN_FUNCTION_MODE_FIELD}为长版时必须是 "
+                    f"{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字。"
+                )
+        elif count > MAIN_FUNCTION_SHORT_LIMIT:
+            issues.append(
+                f"➤软件的主要功能：当前 {count} 字，超过官网 {MAIN_FUNCTION_SHORT_LIMIT} 字上限。"
+                f"请精简到 {MAIN_FUNCTION_SHORT_LIMIT} 字以内；如果本次表单要求 "
+                f"{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字长文本，请把"
+                f"{MAIN_FUNCTION_MODE_FIELD}改为“长版”，再把 {MAIN_FUNCTION_DETAIL_FIELD} 的内容填入该字段。"
+            )
+    if detail and "待用户确认" not in detail:
+        detail_count = effective_len(detail)
+        if detail_count < MAIN_FUNCTION_LONG_MIN or detail_count > MAIN_FUNCTION_LONG_MAX:
+            issues.append(
+                f"➤{MAIN_FUNCTION_DETAIL_FIELD}：当前 {detail_count} 字，备用详细版应为 "
+                f"{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字。"
+            )
+    return issues
+
+
+def technical_characteristic_issues(md_path: Path) -> list[str]:
+    """技术特点 accepts only the official multi-select tags."""
+    value = application_field_value(md_path, "软件的技术特点")
+    if not value or "待用户确认" in value:
+        return []
+    tags = split_tag_values(value)
+    if not tags:
+        return ["➤软件的技术特点：必须至少选择一个官网标签。"]
+    unknown = [tag for tag in tags if tag not in TECHNICAL_CHARACTERISTIC_TAGS]
+    if not unknown:
+        return []
+    return [
+        "➤软件的技术特点："
+        + "、".join(unknown)
+        + " 不在官网标签列表中。该字段只能从官网标签中选择，允许的标签为："
+        + "、".join(TECHNICAL_CHARACTERISTIC_TAGS)
+        + "。"
+    ]
+
+
 def application_field_issues(md_path: Path) -> list[str]:
     issues = pending_application_fields(md_path)
     if not md_path.exists():
@@ -116,19 +179,8 @@ def application_field_issues(md_path: Path) -> list[str]:
         if not application_field_value(md_path, field_name):
             issues.append(f"➤{field_name}：不能为空。")
 
-    main_function = application_field_value(md_path, "软件的主要功能")
-    if not main_function:
-        issues.append("➤软件的主要功能：缺少填写内容，请填写 500~1300 字。")
-    elif "待用户确认" not in main_function:
-        count = effective_len(main_function)
-        if count < MAIN_FUNCTION_MIN_CHARS:
-            issues.append(
-                f"➤软件的主要功能：当前 {count} 字，少于 {MAIN_FUNCTION_MIN_CHARS} 字，请扩写至 500~1300 字。"
-            )
-        elif count > MAIN_FUNCTION_MAX_CHARS:
-            issues.append(
-                f"➤软件的主要功能：当前 {count} 字，超过 {MAIN_FUNCTION_MAX_CHARS} 字，请精简至 500~1300 字。"
-            )
+    issues.extend(main_function_issues(md_path))
+    issues.extend(technical_characteristic_issues(md_path))
     for field_name, allowed in ENUM_FIELDS.items():
         value = application_field_value(md_path, field_name)
         if value and "待用户确认" not in value and value not in allowed:
@@ -180,11 +232,68 @@ def confirm_project(workdir: Path, note: str) -> Path:
     return out_path
 
 
+def confirm_software_name(workdir: Path, note: str, software_name: str, version: str, short_name: str = "") -> Path:
+    """Record the highest-priority gate: the exact software name and version."""
+    name = str(software_name or "").strip()
+    label = str(version or "").strip()
+    short = str(short_name or "").strip()
+    issues: list[str] = []
+    if not name:
+        issues.append("缺少 --software-name：必须让用户给出最终软件全称。")
+    elif "待用户确认" in name or "建议" in name:
+        issues.append(f"软件全称“{name}”仍是建议值；必须由用户确认最终登记名称。")
+    elif len(name) > 60:
+        issues.append(f"软件全称 {len(name)} 个字符，明显过长，请再次与用户确认最终登记名称。")
+    if not label:
+        issues.append("缺少 --version：必须让用户确认版本号（如 V1.0 或 1.0）。")
+    if name and label and name == label:
+        issues.append("软件全称与版本号相同，请检查是否传参错误。")
+    if issues:
+        raise SystemExit(
+            "STOP_FOR_USER\n"
+            "NEXT_ACTION: 软件全称/版本号未通过确认，请先与用户核对：\n"
+            + "\n".join(f"- {item}" for item in issues)
+        )
+    path = workdir / IDENTITY_FILE_NAME
+    data = load_json_or_empty(path)
+    data["software_name"] = name
+    data["software_short_name"] = short
+    data["version"] = label
+    data["appears_in"] = list(IDENTITY_APPEARANCES)
+    if not name.endswith(SOFTWARE_NAME_SUFFIXES):
+        data["name_suffix_hint"] = (
+            "软件全称未以“软件/平台/系统”等结尾，正式资料文件名、页眉和申请表都会照此使用，请再次与用户确认。"
+        )
+    else:
+        data.pop("name_suffix_hint", None)
+    write_confirmation(path, data, "software_name_confirmed", note)
+    return path
+
+
+def identity_gate_issues(workdir: Path, software_name: str = "", version: str = "") -> list[str]:
+    """Return the identity gate issue plus any mismatch with a later draft."""
+    issue = identity_issue(workdir)
+    if issue:
+        return [issue]
+    return identity_mismatch_issues(workdir, software_name, version)
+
+
 def confirm_business(workdir: Path, note: str) -> Path:
     path = workdir / "草稿/业务理解.json"
     if not path.exists():
         raise SystemExit("Missing 草稿/业务理解.json")
     data = read_json(path)
+    issues = identity_gate_issues(
+        workdir,
+        str(data.get("software_name") or ""),
+        str(data.get("version") or ""),
+    )
+    if issues:
+        raise SystemExit(
+            "STOP_FOR_USER\n"
+            "NEXT_ACTION: 业务理解与已确认的软件全称/版本号不一致，请先统一：\n"
+            + "\n".join(f"- {item}" for item in issues)
+        )
     write_confirmation(path, data, "user_confirmed", note)
     return path
 
@@ -237,7 +346,12 @@ def confirm_screenshot_method(workdir: Path, note: str, method: str) -> Path:
 
 def confirm_application_fields(workdir: Path, note: str) -> Path:
     md_path = workdir / "草稿/申请表信息.md"
-    issues = application_field_issues(md_path)
+    issues = identity_gate_issues(
+        workdir,
+        application_field_value(md_path, "软件全称"),
+        application_field_value(md_path, "版本号"),
+    )
+    issues.extend(application_field_issues(md_path))
     if issues:
         raise SystemExit(
             "STOP_FOR_USER\n"
@@ -277,6 +391,13 @@ def confirm_markdown(workdir: Path, note: str) -> Path:
     field_issues = application_field_issues(workdir / "草稿/申请表信息.md")
     if field_issues:
         issues.append("申请表信息仍有字段未满足要求")
+    issues.extend(
+        identity_gate_issues(
+            workdir,
+            application_field_value(workdir / "草稿/申请表信息.md", "软件全称"),
+            application_field_value(workdir / "草稿/申请表信息.md", "版本号"),
+        )
+    )
     issues.extend(draft_completeness_issues(workdir))
 
     if issues:
@@ -302,6 +423,7 @@ def main() -> None:
         choices=[
             "environment",
             "project",
+            "software-name",
             "business",
             "code-selection",
             "screenshot-method",
@@ -315,6 +437,9 @@ def main() -> None:
         choices=sorted(SCREENSHOT_METHODS),
         help="Screenshot capture method when --stage screenshot-method",
     )
+    parser.add_argument("--software-name", default="", help="Confirmed software full name when --stage software-name")
+    parser.add_argument("--version", default="", help="Confirmed version when --stage software-name")
+    parser.add_argument("--short-name", default="", help="Optional software short name")
     args = parser.parse_args()
 
     workdir = Path(args.workdir)
@@ -322,6 +447,8 @@ def main() -> None:
         path = confirm_environment(workdir, args.note)
     elif args.stage == "project":
         path = confirm_project(workdir, args.note)
+    elif args.stage == "software-name":
+        path = confirm_software_name(workdir, args.note, args.software_name, args.version, args.short_name)
     elif args.stage == "business":
         path = confirm_business(workdir, args.note)
     elif args.stage == "code-selection":

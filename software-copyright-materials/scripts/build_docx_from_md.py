@@ -23,6 +23,8 @@ from common import (
     draft_snapshot,
     ensure_dir,
     file_sha256,
+    identity_issue,
+    identity_mismatch_issues,
     known_code_drafts,
     read_json,
     safe_filename,
@@ -86,6 +88,18 @@ def read_json_if_exists(path: Path) -> dict[str, Any]:
 def confirmation_issues(workdir: Path) -> list[str]:
     draft_dir = workdir / "草稿"
     issues: list[str] = []
+    identity = identity_issue(workdir)
+    if identity:
+        issues.append(identity)
+    app_md = draft_dir / "申请表信息.md"
+    if not identity:
+        issues.extend(
+            identity_mismatch_issues(
+                workdir,
+                parse_application_field(app_md, "软件全称"),
+                parse_application_field(app_md, "版本号"),
+            )
+        )
     business = read_json_if_exists(draft_dir / "业务理解.json")
     if not business or not business.get("user_confirmed"):
         issues.append("业务理解尚未确认：请确认 草稿/业务理解.md 后记录 `business` 门禁")
@@ -101,7 +115,6 @@ def confirmation_issues(workdir: Path) -> list[str]:
         issues.append("截图方式尚未确认：请选择截图方式后记录 `screenshot-method` 门禁")
     elif screenshot.get("screenshot_method") not in {"playwright-cli", "user-supplied", "skip"}:
         issues.append("截图方式已失效：请重新选择 Playwright CLI 自动截图、用户自行截图或跳过截图")
-    app_md = draft_dir / "申请表信息.md"
     if app_md.exists():
         _, warnings = parse_application_lines(app_md)
         if warnings:

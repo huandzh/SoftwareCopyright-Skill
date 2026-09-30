@@ -15,12 +15,21 @@ from capture_screenshots import collect_screenshots  # noqa: E402
 import check_playwright_cli as playwright_check  # noqa: E402
 from check_environment import check_environment  # noqa: E402
 from check_playwright_cli import npm_global_candidates  # noqa: E402
-from common import confirmation_is_current, read_json  # noqa: E402
+from common import (  # noqa: E402
+    MAIN_FUNCTION_DETAIL_FIELD,
+    MAIN_FUNCTION_MODE_FIELD,
+    confirmation_is_current,
+    identity_issue,
+    read_json,
+)
 from confirm_stage import (
     REQUIRED_FIELDS,
     application_field_issues,
     confirm_business,
+    confirm_software_name,
+    main_function_issues,
     parse_screenshot_method,
+    technical_characteristic_issues,
 )  # noqa: E402
 from generate_application_info import submitted_code_page_count, total_source_line_count  # noqa: E402
 
@@ -121,6 +130,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
     def test_business_edit_invalidates_confirmation(self) -> None:
         draft = self.temp_dir / "草稿"
         draft.mkdir()
+        confirm_software_name(self.temp_dir, "用户确认", "示例软件", "V1.0")
         path = draft / "业务理解.json"
         path.write_text('{"industry":"软件服务","user_confirmed":false}', encoding="utf-8")
 
@@ -131,6 +141,89 @@ class WorkflowIntegrityTests(unittest.TestCase):
         confirmed["industry"] = "教育"
         path.write_text(json.dumps(confirmed, ensure_ascii=False), encoding="utf-8")
         self.assertFalse(confirmation_is_current(read_json(path)))
+
+    def test_software_name_gate_must_be_confirmed_before_business(self) -> None:
+        draft = self.temp_dir / "草稿"
+        draft.mkdir()
+        business = draft / "业务理解.json"
+        business.write_text('{"software_name":"示例软件","industry":"软件服务"}', encoding="utf-8")
+
+        self.assertIsNotNone(identity_issue(self.temp_dir))
+        with self.assertRaises(SystemExit):
+            confirm_business(self.temp_dir, "确认")
+
+        confirm_software_name(self.temp_dir, "用户确认", "示例软件", "V1.0")
+        self.assertIsNone(identity_issue(self.temp_dir))
+
+        confirm_business(self.temp_dir, "确认")
+        self.assertTrue(confirmation_is_current(read_json(business)))
+
+        identity_path = self.temp_dir / "软件名称确认.json"
+        changed = read_json(identity_path)
+        changed["software_name"] = "改名后的软件"
+        identity_path.write_text(json.dumps(changed, ensure_ascii=False), encoding="utf-8")
+        self.assertIsNotNone(identity_issue(self.temp_dir))
+
+    def test_software_name_gate_rejects_suggested_values(self) -> None:
+        with self.assertRaises(SystemExit):
+            confirm_software_name(self.temp_dir, "确认", "待用户确认（建议：示例软件）", "V1.0")
+        with self.assertRaises(SystemExit):
+            confirm_software_name(self.temp_dir, "确认", "示例软件", "")
+
+    def test_business_name_must_match_the_confirmed_name(self) -> None:
+        draft = self.temp_dir / "草稿"
+        draft.mkdir()
+        confirm_software_name(self.temp_dir, "用户确认", "示例软件", "V1.0")
+        (draft / "业务理解.json").write_text('{"software_name":"另一个名称"}', encoding="utf-8")
+
+        with self.assertRaises(SystemExit) as raised:
+            confirm_business(self.temp_dir, "确认")
+        self.assertIn("不一致", str(raised.exception))
+
+    def test_main_function_defaults_to_two_hundred_characters(self) -> None:
+        path = self.temp_dir / "申请表信息.md"
+        path.write_text(f"➤软件的主要功能：{'功' * 200}\n", encoding="utf-8")
+        self.assertEqual(main_function_issues(path), [])
+
+        path.write_text(f"➤软件的主要功能：{'功' * 260}\n", encoding="utf-8")
+        issues = main_function_issues(path)
+        self.assertTrue(any("超过官网 200 字上限" in issue for issue in issues))
+
+    def test_long_form_mode_uses_the_backup_field(self) -> None:
+        path = self.temp_dir / "申请表信息.md"
+        path.write_text(
+            f"➤软件的主要功能：{'功' * 800}\n"
+            f"➤{MAIN_FUNCTION_MODE_FIELD}：长版\n"
+            f"➤{MAIN_FUNCTION_DETAIL_FIELD}：{'能' * 800}\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(main_function_issues(path), [])
+
+        path.write_text(
+            f"➤软件的主要功能：{'功' * 800}\n"
+            f"➤{MAIN_FUNCTION_MODE_FIELD}：短版\n"
+            f"➤{MAIN_FUNCTION_DETAIL_FIELD}：{'能' * 120}\n",
+            encoding="utf-8",
+        )
+        issues = main_function_issues(path)
+        self.assertTrue(any("超过官网 200 字上限" in issue for issue in issues))
+        self.assertTrue(any(MAIN_FUNCTION_DETAIL_FIELD in issue for issue in issues))
+
+    def test_technical_characteristics_accept_only_official_tags(self) -> None:
+        path = self.temp_dir / "申请表信息.md"
+        path.write_text("➤软件的技术特点：网页应用、云计算软件\n", encoding="utf-8")
+        self.assertEqual(technical_characteristic_issues(path), [])
+
+        path.write_text("➤软件的技术特点：系统采用 Vue 构建前端界面\n", encoding="utf-8")
+        issues = technical_characteristic_issues(path)
+        self.assertTrue(any("不在官网标签列表中" in issue for issue in issues))
+
+    def test_final_build_requires_the_software_name_gate(self) -> None:
+        from build_docx_from_md import confirmation_issues  # noqa: PLC0415
+
+        issues = confirmation_issues(self.temp_dir)
+
+        self.assertTrue(any("软件全称/版本号尚未确认" in issue for issue in issues))
 
     def test_application_gate_checks_dates_counts_and_limits(self) -> None:
         values = {field: "有效内容" for field in REQUIRED_FIELDS}
@@ -143,7 +236,8 @@ class WorkflowIntegrityTests(unittest.TestCase):
                 "权利范围": "全部权利",
                 "权利取得方式": "原始取得",
                 "开发完成日期": "2026-99-99",
-                "软件的主要功能": "功" * 500,
+                "软件的主要功能": "功" * 200,
+                "软件的技术特点": "网页应用",
                 "源程序量": "12行",
                 "页数": "0",
             }
