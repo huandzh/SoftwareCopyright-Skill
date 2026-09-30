@@ -11,21 +11,26 @@ from typing import Any
 from common import (
     CODE_LINES_PER_PAGE,
     CODE_MAX_COLUMNS,
+    CODE_SLICE_PAGE_CHOICES,
+    CODE_SLICE_PAGES_DEFAULT,
     FRONTEND_EXTS,
+    code_split_draft_names,
     ensure_dir,
     is_source_candidate,
+    known_code_drafts,
     read_json,
     read_text,
     rel,
     safe_filename,
     write_json,
 )
+from code_comments import StripResult, strip_source_comments
 
 
-# Used only to estimate how much source is needed for the first/last 30-page sets.
+# Used only to estimate how much source is needed for the first/last N-page sets.
 # Final DOCX pagination is performed by Word's layout engine without hard page breaks.
 LINES_PER_PAGE = CODE_LINES_PER_PAGE
-SPLIT_THRESHOLD_PAGES = 60
+SLICE_PAGES = CODE_SLICE_PAGES_DEFAULT
 MAX_CODE_COLUMNS = CODE_MAX_COLUMNS
 
 
@@ -169,10 +174,18 @@ def load_selected_files(project: Path, selection_path: Path | None) -> list[dict
     return selected
 
 
-def collect_code_lines(project: Path, selection_path: Path | None) -> tuple[list[str], list[dict[str, Any]]]:
+def collect_code_lines(
+    project: Path, selection_path: Path | None, keep_comments: bool = False
+) -> tuple[list[str], list[dict[str, Any]], dict[str, Any]]:
     selected_items = load_selected_files(project, selection_path)
     all_lines: list[str] = []
     manifest_files: list[dict[str, Any]] = []
+    comment_stats: dict[str, Any] = {
+        "enabled": not keep_comments,
+        "comment_only_lines": 0,
+        "inline_comment_lines": 0,
+        "unsupported_files": [],
+    }
 
     for item in selected_items:
         path = (project / item["path"]).resolve()
@@ -182,8 +195,17 @@ def collect_code_lines(project: Path, selection_path: Path | None) -> tuple[list
             raise SystemExit(f"Selected file is outside project: {path}")
         if should_skip_file(path):
             continue
-        text = read_text(path)
-        source_lines = text.splitlines()
+        raw_text = read_text(path)
+        source_lines = raw_text.splitlines()
+        stripped = StripResult(text=raw_text, supported=True, comment_only_lines=0, inline_comment_lines=0)
+        if not keep_comments:
+            stripped = strip_source_comments(raw_text, path.suffix)
+            if stripped.supported:
+                comment_stats["comment_only_lines"] += stripped.comment_only_lines
+                comment_stats["inline_comment_lines"] += stripped.inline_comment_lines
+            else:
+                comment_stats["unsupported_files"].append(rel(path, project))
+        text = stripped.text
         selected_source_lines = source_code_lines(text)
         selected_lines = material_code_lines(text)
         if not selected_source_lines:
@@ -200,6 +222,9 @@ def collect_code_lines(project: Path, selection_path: Path | None) -> tuple[list
                 "path": rel(path, project),
                 "source_line_count": len(source_lines),
                 "blank_line_count": len(source_lines) - len(selected_source_lines),
+                "comment_only_line_count": stripped.comment_only_lines,
+                "inline_comment_line_count": stripped.inline_comment_lines,
+                "comment_stripping_supported": stripped.supported,
                 "selected_line_start": 1,
                 "selected_line_end": source_end_line,
                 "selected_line_count": len(selected_source_lines),
@@ -208,7 +233,8 @@ def collect_code_lines(project: Path, selection_path: Path | None) -> tuple[list
                 "material_line_end": end,
             }
         )
-    return all_lines, manifest_files
+    comment_stats["unsupported_files"] = sorted(set(comment_stats["unsupported_files"]))
+    return all_lines, manifest_files, comment_stats
 
 
 def paginate(lines: list[str], lines_per_page: int) -> list[list[str]]:
@@ -225,6 +251,17 @@ def write_pages_md(path: Path, title: str, software_name: str, version: str, pag
 
 
 def write_manifest_md(path: Path, manifest: dict[str, Any]) -> None:
+    comments = manifest.get("comment_stripping") or {}
+    if comments.get("enabled"):
+        comment_note = (
+            f"已移除整行注释 {comments.get('comment_only_lines', 0)} 行、"
+            f"行尾注释 {comments.get('inline_comment_lines', 0)} 处（字符串内容保留）"
+        )
+        unsupported = comments.get("unsupported_files") or []
+        if unsupported:
+            comment_note += f"；{len(unsupported)} 个文件语言语法未知，未改动：" + "、".join(unsupported[:5])
+    else:
+        comment_note = "按参数保留源码注释"
     lines = [
         "# 代码提取清单",
         "",
@@ -235,6 +272,9 @@ def write_manifest_md(path: Path, manifest: dict[str, Any]) -> None:
         f"- 材料代码行数：{manifest['material_line_count']}",
         f"- 每页行数：{manifest['lines_per_page']}",
         f"- 单行最大显示宽度：{manifest['max_code_columns']} 列",
+        f"- 前后页数模式：前 {manifest['slice_pages']} 页 + 后 {manifest['slice_pages']} 页"
+        f"（共 {manifest['slice_pages'] * 2} 页，可用 --slice-pages 在 30/40 之间切换）",
+        f"- 注释处理：{comment_note}",
         f"- 已选源码估算总页数：{manifest['total_pages']}",
         f"- 实际提交材料页数：{manifest['submitted_page_count']}",
         f"- 目标页数：{manifest['target_pages']}",
@@ -244,12 +284,14 @@ def write_manifest_md(path: Path, manifest: dict[str, Any]) -> None:
         "",
         "## 文件来源",
         "",
-        "| 文件 | 源码行数 | 抽取源码范围 | 抽取源码行数 | 材料物理行数 | 材料行范围 |",
-        "| --- | ---: | --- | ---: | ---: | --- |",
+        "| 文件 | 源码行数 | 移除整行注释 | 移除行尾注释 | 抽取源码范围 | 抽取源码行数 | 材料物理行数 | 材料行范围 |",
+        "| --- | ---: | ---: | ---: | --- | ---: | ---: | --- |",
     ]
     for item in manifest["files"]:
         lines.append(
             f"| `{item['path']}` | {item['source_line_count']} | "
+            f"{item['comment_only_line_count']} | "
+            f"{item['inline_comment_line_count']} | "
             f"{item['selected_line_start']}-{item['selected_line_end']} | "
             f"{item['selected_line_count']} | "
             f"{item['material_line_count']} | "
@@ -258,44 +300,58 @@ def write_manifest_md(path: Path, manifest: dict[str, Any]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def extract(project: Path, out_dir: Path, software_name: str, version: str, lines_per_page: int, selection_path: Path | None) -> dict[str, Any]:
+def extract(
+    project: Path,
+    out_dir: Path,
+    software_name: str,
+    version: str,
+    lines_per_page: int,
+    selection_path: Path | None,
+    slice_pages: int = SLICE_PAGES,
+    keep_comments: bool = False,
+) -> dict[str, Any]:
     ensure_dir(out_dir)
-    code_lines, files = collect_code_lines(project, selection_path)
+    slice_pages = max(1, int(slice_pages))
+    threshold = slice_pages * 2
+    code_lines, files, comment_stats = collect_code_lines(
+        project, selection_path, keep_comments=keep_comments
+    )
     if not code_lines:
         raise SystemExit("No selected frontend source code files found for extraction.")
 
     pages = paginate(code_lines, lines_per_page)
     total_pages = len(pages)
     available_lines, available_pages, unselected_count = available_pages_from_selection(selection_path, lines_per_page)
-    if total_pages < SPLIT_THRESHOLD_PAGES and available_pages >= SPLIT_THRESHOLD_PAGES and unselected_count > 0:
+    if total_pages < threshold and available_pages >= threshold and unselected_count > 0:
         raise SystemExit(
             "STOP_FOR_USER\n"
-            f"NEXT_ACTION: 当前已选代码只有 {total_pages} 页，但候选源码足够补齐到 {SPLIT_THRESHOLD_PAGES} 页。"
+            f"NEXT_ACTION: 当前已选代码只有 {total_pages} 页，但候选源码足够补齐到 {threshold} 页。"
             "请在 草稿/代码文件选择.json 中继续选择补充文件，重新记录 code-selection 门禁后再抽取。"
         )
-    for stale_name in ("代码-前30页.md", "代码-后30页.md", "代码-全部.md"):
+    for stale_name in known_code_drafts():
         (out_dir / stale_name).unlink(missing_ok=True)
     outputs: list[str] = []
 
-    if total_pages >= SPLIT_THRESHOLD_PAGES:
-        front = list(enumerate(pages[:30], start=1))
-        back = [(31 + i, page) for i, page in enumerate(pages[-30:])]
-        front_path = out_dir / "代码-前30页.md"
-        back_path = out_dir / "代码-后30页.md"
-        write_pages_md(front_path, "代码材料（前30页）", software_name, version, front)
-        write_pages_md(back_path, "代码材料（后30页）", software_name, version, back)
+    if total_pages >= threshold:
+        front = list(enumerate(pages[:slice_pages], start=1))
+        back = [(slice_pages + 1 + i, page) for i, page in enumerate(pages[-slice_pages:])]
+        front_name, back_name = code_split_draft_names(slice_pages)
+        front_path = out_dir / front_name
+        back_path = out_dir / back_name
+        write_pages_md(front_path, f"代码材料（前{slice_pages}页）", software_name, version, front)
+        write_pages_md(back_path, f"代码材料（后{slice_pages}页）", software_name, version, back)
         outputs.extend([front_path.name, back_path.name])
-        mode = "front30_back30"
+        mode = f"front{slice_pages}_back{slice_pages}"
     else:
         all_path = out_dir / "代码-全部.md"
         all_pages = list(enumerate(pages, start=1))
         write_pages_md(all_path, "代码材料（全部）", software_name, version, all_pages)
         outputs.append(all_path.name)
-        mode = "all_under_60_pages"
+        mode = "all_under_target_pages"
     supplement_status = (
-        "候选源码可达到前30页/后30页要求"
-        if available_pages >= SPLIT_THRESHOLD_PAGES
-        else "候选源码不足60页，按全部代码材料生成"
+        f"候选源码可达到前{slice_pages}页/后{slice_pages}页要求"
+        if available_pages >= threshold
+        else f"候选源码不足{threshold}页，按全部代码材料生成"
     )
 
     manifest = {
@@ -308,9 +364,11 @@ def extract(project: Path, out_dir: Path, software_name: str, version: str, line
         "selected_source_line_count": sum(item["selected_line_count"] for item in files),
         "lines_per_page": lines_per_page,
         "max_code_columns": MAX_CODE_COLUMNS,
+        "slice_pages": slice_pages,
+        "comment_stripping": comment_stats,
         "total_pages": total_pages,
-        "submitted_page_count": 60 if total_pages >= SPLIT_THRESHOLD_PAGES else total_pages,
-        "target_pages": SPLIT_THRESHOLD_PAGES,
+        "submitted_page_count": threshold if total_pages >= threshold else total_pages,
+        "target_pages": threshold,
         "available_candidate_line_count": available_lines,
         "available_candidate_pages": available_pages,
         "supplement_status": supplement_status,
@@ -333,6 +391,18 @@ def main() -> None:
     parser.add_argument("--version", default="V1.0")
     parser.add_argument("--out-dir", default="软件著作权申请资料/草稿")
     parser.add_argument("--lines-per-page", type=int, default=LINES_PER_PAGE)
+    parser.add_argument(
+        "--slice-pages",
+        type=int,
+        choices=list(CODE_SLICE_PAGE_CHOICES),
+        default=SLICE_PAGES,
+        help="Pages per half of the code material: 30 (60 pages total) or 40 (80 pages total, default)",
+    )
+    parser.add_argument(
+        "--keep-comments",
+        action="store_true",
+        help="Keep source comments instead of removing them from the code material",
+    )
     parser.add_argument("--selection", help="Editable JSON file created by propose_code_selection.py")
     args = parser.parse_args()
 
@@ -346,11 +416,28 @@ def main() -> None:
     if selection and not selection.exists():
         raise SystemExit(f"Selection JSON not found: {selection}")
 
-    manifest = extract(project, Path(args.out_dir), args.software_name, args.version, args.lines_per_page, selection)
+    manifest = extract(
+        project,
+        Path(args.out_dir),
+        args.software_name,
+        args.version,
+        args.lines_per_page,
+        selection,
+        slice_pages=args.slice_pages,
+        keep_comments=args.keep_comments,
+    )
     print(f"OK code drafts: {args.out_dir}")
     print(f"Selected files: {manifest['file_count']}")
     print(f"Mode: {manifest['mode']}")
+    print(f"Slice pages: {manifest['slice_pages']} + {manifest['slice_pages']}")
     print(f"Total pages: {manifest['total_pages']}")
+    comments = manifest["comment_stripping"]
+    if comments.get("enabled"):
+        print(
+            "Comments removed: "
+            f"{comments['comment_only_lines']} comment-only lines, "
+            f"{comments['inline_comment_lines']} trailing comments"
+        )
     print(f"Outputs: {', '.join(manifest['outputs'])}")
 
 

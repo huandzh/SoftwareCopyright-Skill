@@ -266,6 +266,12 @@ CODE_LINE_SPACING = "13pt"
 CODE_LINES_PER_PAGE = 55
 CODE_MAX_COLUMNS = 90
 
+# Code material is submitted as the first N and the last N pages. The default
+# for this flavour is 40 + 40 pages; 30 + 30 stays selectable for users who
+# need the smaller traditional set.
+CODE_SLICE_PAGE_CHOICES = (30, 40)
+CODE_SLICE_PAGES_DEFAULT = 40
+
 CONFIRMATION_METADATA_KEYS = {
     "user_confirmed",
     "confirmation_note",
@@ -273,11 +279,34 @@ CONFIRMATION_METADATA_KEYS = {
     "confirmed_content_sha256",
 }
 
-KNOWN_CODE_DRAFTS = {
-    "代码-前30页.md",
-    "代码-后30页.md",
-    "代码-全部.md",
-}
+
+CODE_DRAFT_RE = re.compile(r"^代码-(?P<part>前(?P<front>\d+)页|后(?P<back>\d+)页|全部)\.md$")
+CODE_DOCX_SLICE_RE = re.compile(r"\((?:前|后)(?P<pages>\d+)页\)")
+
+
+def code_split_draft_names(slice_pages: int) -> tuple[str, str]:
+    return (f"代码-前{slice_pages}页.md", f"代码-后{slice_pages}页.md")
+
+
+def known_code_drafts() -> set[str]:
+    """Every code Markdown name the skill may produce in any slice mode."""
+    names = {"代码-全部.md"}
+    for pages in CODE_SLICE_PAGE_CHOICES:
+        names.update(code_split_draft_names(pages))
+    return names
+
+
+def code_docx_name(md_name: str, safe_name: str) -> str | None:
+    match = CODE_DRAFT_RE.match(md_name)
+    if not match:
+        return None
+    return f"{safe_name}-代码({match.group('part')}).docx"
+
+
+def code_output_slice_pages(name: str) -> int | None:
+    """Read the required page count from ``...-代码(前40页).docx`` style names."""
+    match = CODE_DOCX_SLICE_RE.search(name)
+    return int(match.group("pages")) if match else None
 
 
 def is_excluded(path: Path) -> bool:
@@ -432,13 +461,20 @@ def draft_completeness_issues(workdir: Path) -> list[str]:
         issues.append("草稿/代码提取清单.json 未声明代码 Markdown 输出")
         return issues
     declared = {str(name) for name in outputs}
-    invalid = sorted(declared - KNOWN_CODE_DRAFTS)
+    known = known_code_drafts()
+    try:
+        declared_slice = int(manifest.get("slice_pages") or 0)
+    except (TypeError, ValueError):
+        declared_slice = 0
+    if declared_slice > 0:
+        known.update(code_split_draft_names(declared_slice))
+    invalid = sorted(declared - known)
     if invalid:
         issues.append("代码提取清单包含未知输出：" + "、".join(invalid))
-    for name in sorted(declared & KNOWN_CODE_DRAFTS):
+    for name in sorted(declared & known):
         if not (draft_dir / name).is_file():
             issues.append(f"缺少清单声明的 草稿/{name}")
-    stale = sorted(name for name in KNOWN_CODE_DRAFTS - declared if (draft_dir / name).exists())
+    stale = sorted(name for name in known - declared if (draft_dir / name).exists())
     if stale:
         issues.append("存在与当前代码提取模式冲突的旧草稿：" + "、".join(stale))
     review_path = draft_dir / "操作手册自检记录.json"

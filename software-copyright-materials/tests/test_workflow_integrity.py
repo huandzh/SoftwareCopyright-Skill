@@ -77,10 +77,16 @@ class WorkflowIntegrityTests(unittest.TestCase):
         self.assertEqual(Path(result["executable"]), executable.resolve())
         self.assertNotIn("重启", result["next_action"])
 
-    def test_submitted_pages_are_60_for_front_back_mode(self) -> None:
-        manifest = {"mode": "front30_back30", "total_pages": 143}
+    def test_submitted_pages_follow_the_configured_slice(self) -> None:
+        default_mode = {"mode": "front40_back40", "slice_pages": 40, "submitted_page_count": 80}
+        legacy_mode = {"mode": "front30_back30", "total_pages": 143}
+        fallback_mode = {"mode": "front40_back40", "total_pages": 143}
+        whole_program = {"mode": "all_under_target_pages", "total_pages": 42}
 
-        self.assertEqual(submitted_code_page_count(manifest), 60)
+        self.assertEqual(submitted_code_page_count(default_mode), 80)
+        self.assertEqual(submitted_code_page_count(legacy_mode), 60)
+        self.assertEqual(submitted_code_page_count(fallback_mode), 80)
+        self.assertEqual(submitted_code_page_count(whole_program), 42)
 
     def test_user_screenshots_follow_numeric_prefix_order(self) -> None:
         source = self.temp_dir / "用户截图"

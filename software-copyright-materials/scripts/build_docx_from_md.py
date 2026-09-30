@@ -15,11 +15,15 @@ from common import (
     CODE_FONT_NAME,
     CODE_FONT_SIZE,
     CODE_LINE_SPACING,
+    code_docx_name,
+    code_output_slice_pages,
+    code_split_draft_names,
     confirmation_is_current,
     draft_completeness_issues,
     draft_snapshot,
     ensure_dir,
     file_sha256,
+    known_code_drafts,
     read_json,
     safe_filename,
 )
@@ -488,6 +492,7 @@ def docx_checks(cli: OfficeCli, outputs: list[Path], estimated_pages: dict[Path,
             f"OpenXML 结构错误 0 个；内容/格式提示 {issue_count(issues)} 个。"
         )
         estimated = estimated_pages.get(output)
+        required_pages = code_output_slice_pages(output.name)
         stats = cli.stats(output, native_page_count=estimated is not None)
         pages = json_data(stats).get("pages")
         if estimated is not None:
@@ -496,11 +501,9 @@ def docx_checks(cli: OfficeCli, outputs: list[Path], estimated_pages: dict[Path,
                     f"- `{output.name}`：当前环境无法取得 Word 原生页数；草稿按 {estimated} 页估算，"
                     "提交前需在 Word/WPS 中复核自动分页结果。"
                 )
-            elif int(pages) != estimated and estimated == 30 and any(
-                marker in output.name for marker in ("(前30页)", "(后30页)")
-            ):
+            elif required_pages is not None and int(pages) != required_pages:
                 raise OfficeCliError(
-                    f"{output.name} 经 Word 自动分页后为 {pages} 页，不是要求的 30 页。"
+                    f"{output.name} 经 Word 自动分页后为 {pages} 页，不是要求的 {required_pages} 页。"
                     "请根据生成报告重新校准代码选材量后再生成，不能把页数不符的文档作为正式资料。"
                 )
             elif int(pages) != estimated:
@@ -570,23 +573,41 @@ def build_all(workdir: Path, software_name: str, version: str, skip_preview: boo
     if app_txt:
         outputs.append(app_txt)
     warnings.extend(app_warnings)
-    code_spec_map = {
-        "代码-前30页.md": f"{safe_name}-代码(前30页).docx",
-        "代码-后30页.md": f"{safe_name}-代码(后30页).docx",
-        "代码-全部.md": f"{safe_name}-代码(全部).docx",
-    }
     code_manifest = read_json_if_exists(draft_dir / "代码提取清单.json")
     declared_code_drafts = [
-        str(name) for name in code_manifest.get("outputs", []) if str(name) in code_spec_map
+        str(name) for name in code_manifest.get("outputs", []) if code_docx_name(str(name), safe_name)
     ]
-    for md_name, docx_name in code_spec_map.items():
-        if md_name not in declared_code_drafts:
-            (final_dir / docx_name).unlink(missing_ok=True)
+    declared_code_docx = {code_docx_name(name, safe_name) for name in declared_code_drafts}
+    stale_candidates = known_code_drafts()
+    try:
+        declared_slice = int(code_manifest.get("slice_pages") or 0)
+    except (TypeError, ValueError):
+        declared_slice = 0
+    if declared_slice > 0:
+        stale_candidates.update(code_split_draft_names(declared_slice))
+    for md_name in sorted(stale_candidates):
+        stale_name = code_docx_name(md_name, safe_name)
+        if stale_name and stale_name not in declared_code_docx:
+            (final_dir / stale_name).unlink(missing_ok=True)
     for md_name in declared_code_drafts:
         md_path = draft_dir / md_name
-        out_path = final_dir / code_spec_map[md_name]
+        out_path = final_dir / str(code_docx_name(md_name, safe_name))
         estimated_pages[out_path] = build_code_docx(cli, md_path, out_path, final_software_name, final_version)
         outputs.append(out_path)
+    slice_pages = code_manifest.get("slice_pages")
+    code_mode_note = ""
+    if declared_code_drafts and slice_pages:
+        comments = code_manifest.get("comment_stripping") or {}
+        if comments.get("enabled"):
+            comment_note = (
+                f"已移除整行注释 {comments.get('comment_only_lines', 0)} 行、"
+                f"行尾注释 {comments.get('inline_comment_lines', 0)} 处"
+            )
+        else:
+            comment_note = "按参数保留源码注释"
+        code_mode_note = (
+            f"- 代码材料模式：前 {slice_pages} 页 + 后 {slice_pages} 页（共 {int(slice_pages) * 2} 页）；{comment_note}。"
+        )
     manual_md = draft_dir / "操作手册.md"
     if manual_md.exists():
         manual_out = final_dir / f"{safe_name}_操作手册.docx"
@@ -628,6 +649,8 @@ def build_all(workdir: Path, software_name: str, version: str, skip_preview: boo
     docx_outputs = [path for path in outputs if path.suffix.lower() == ".docx"]
     notes = docx_checks(
         cli, docx_outputs, estimated_pages, final_dir / "预览", render_preview=not skip_preview)
+    if code_mode_note:
+        notes.append(code_mode_note)
     if manual_screenshot_note:
         notes.append(manual_screenshot_note)
     report = write_report(final_dir, outputs, warnings, notes, cli.version)

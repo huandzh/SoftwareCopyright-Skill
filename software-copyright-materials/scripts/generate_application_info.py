@@ -270,10 +270,33 @@ def submitted_code_page_count(manifest: dict[str, Any]) -> int | str:
     value = manifest.get("submitted_page_count")
     if value:
         return int(value)
+    mode = str(manifest.get("mode") or "")
+    match = re.match(r"front(\d+)_back(\d+)", mode)
+    if match:
+        return int(match.group(1)) + int(match.group(2))
+    slice_pages = manifest.get("slice_pages")
+    if slice_pages:
+        return int(slice_pages) * 2
     total = manifest.get("total_pages")
     if not total:
         return "待用户确认"
-    return 60 if manifest.get("mode") == "front30_back30" else int(total)
+    return int(total)
+
+
+def comment_stripping_note(manifest: dict[str, Any]) -> str:
+    comments = manifest.get("comment_stripping")
+    if not isinstance(comments, dict) or not comments:
+        return "未记录（按旧版清单生成）"
+    if not comments.get("enabled"):
+        return "按参数保留源码注释"
+    note = (
+        f"已移除整行注释 {comments.get('comment_only_lines', 0)} 行、"
+        f"行尾注释 {comments.get('inline_comment_lines', 0)} 处（字符串内容保留）"
+    )
+    unsupported = comments.get("unsupported_files") or []
+    if unsupported:
+        note += f"；{len(unsupported)} 个文件语言语法未知未改动"
+    return note
 
 
 def build_fields(
@@ -668,6 +691,8 @@ def write_application_md(path: Path, fields: dict[str, str], analysis: dict[str,
             f"- 已选源码估算总页数：{manifest.get('total_pages', 0)}",
             f"- 实际提交代码材料页数：{submitted_code_page_count(manifest)}",
             f"- 代码输出模式：{manifest.get('mode', '')}",
+            f"- 代码材料前后页数：前 {manifest.get('slice_pages', '未记录')} 页 + 后 {manifest.get('slice_pages', '未记录')} 页",
+            f"- 代码注释处理：{comment_stripping_note(manifest)}",
             f"- 业务理解：{'已读取 草稿/业务理解.json' if business else '未提供，使用项目分析兜底'}",
             "",
             "## 待确认字段",

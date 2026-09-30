@@ -12,6 +12,7 @@ sys.path.insert(0, str(SCRIPTS))
 from build_docx_from_md import (  # noqa: E402
     THEME_FONT_TARGETS,
     code_paragraph_commands,
+    docx_checks,
     header_commands,
     manual_format_commands,
     normalize_docx_theme_fonts,
@@ -28,7 +29,38 @@ from common import (  # noqa: E402
     CODE_LINES_PER_PAGE,
     CODE_MAX_COLUMNS,
 )
-from officecli_backend import officecli_environment  # noqa: E402
+from officecli_backend import OfficeCliError, officecli_environment  # noqa: E402
+
+
+NORMALIZED_THEME = (
+    '<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+    "<a:themeElements><a:fontScheme>"
+    '<a:majorFont><a:latin typeface="Times New Roman"/><a:ea typeface="SimSun"/><a:cs typeface="Times New Roman"/></a:majorFont>'
+    '<a:minorFont><a:latin typeface="Times New Roman"/><a:ea typeface="SimSun"/><a:cs typeface="Times New Roman"/></a:minorFont>'
+    "</a:fontScheme></a:themeElements></a:theme>"
+)
+
+
+class FakeOfficeCli:
+    """Minimal OfficeCLI stand-in for page-count and structure checks."""
+
+    def __init__(self, pages: int | None) -> None:
+        self.pages = pages
+
+    def raw(self, output: Path, part: str) -> dict[str, object]:
+        return {"success": True, "data": NORMALIZED_THEME}
+
+    def validate(self, output: Path) -> dict[str, object]:
+        return {"success": True, "data": {"count": 0}}
+
+    def issues(self, output: Path) -> dict[str, object]:
+        return {"success": True, "data": {"count": 2}}
+
+    def stats(self, output: Path, native_page_count: bool = False) -> dict[str, object]:
+        return {"success": True, "data": {"pages": self.pages}}
+
+    def screenshot(self, output: Path, target: Path, render: str = "auto") -> dict[str, object]:
+        raise OfficeCliError("preview unavailable in tests")
 
 
 class OfficeCliBuilderTests(unittest.TestCase):
@@ -148,6 +180,28 @@ class OfficeCliBuilderTests(unittest.TestCase):
         self.assertIn("【截图预留：第一页。】", prepared)
         self.assertIn("OCLI_IMAGE_0001", prepared)
         self.assertEqual(images[0]["alt"], "第二页")
+
+    def test_code_docx_pages_must_equal_the_page_count_in_its_name(self) -> None:
+        preview_dir = self.temp_dir / "预览"
+        output = self.temp_dir / "示例软件-代码(前40页).docx"
+        output.write_bytes(b"docx")
+
+        with self.assertRaises(OfficeCliError) as raised:
+            docx_checks(FakeOfficeCli(39), [output], {output: 40}, preview_dir, render_preview=False)
+        self.assertIn("不是要求的 40 页", str(raised.exception))
+
+        notes = docx_checks(FakeOfficeCli(40), [output], {output: 40}, preview_dir, render_preview=False)
+        self.assertTrue(any("与草稿选材估算一致" in note for note in notes))
+
+        legacy = self.temp_dir / "示例软件-代码(前30页).docx"
+        legacy.write_bytes(b"docx")
+        legacy_notes = docx_checks(FakeOfficeCli(30), [legacy], {legacy: 30}, preview_dir, render_preview=False)
+        self.assertTrue(any("与草稿选材估算一致" in note for note in legacy_notes))
+
+        whole = self.temp_dir / "示例软件-代码(全部).docx"
+        whole.write_bytes(b"docx")
+        whole_notes = docx_checks(FakeOfficeCli(11), [whole], {whole: 12}, preview_dir, render_preview=False)
+        self.assertTrue(any("草稿选材估算为 12 页" in note for note in whole_notes))
 
     def test_manual_picture_command_is_sent_to_officecli(self) -> None:
         image = self.temp_dir / "screen.png"
