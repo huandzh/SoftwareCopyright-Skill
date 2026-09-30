@@ -21,7 +21,13 @@ irm https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.ps1 | iex
 
 运行时只从当前进程 PATH 查找全局 `officecli` / `officecli.exe`。如果 Windows 官方安装目录中已有二进制、但当前进程 PATH 尚未识别，环境检查必须报告“需要重启 Codex”并停止，不得把该文件当作项目便携版直接绕过重启。
 
-版本缺失或不等于 `1.0.152` 时，环境检查必须停止。只有用户明确接受兼容性风险后，正式生成才允许传入 `--allow-untested-officecli`。
+版本缺失或不等于 `1.0.152`（当前固定验证版本）时，环境检查必须停止。只有用户明确接受兼容性风险后，正式生成才允许传入 `--allow-untested-officecli`。
+
+`--allow-untested-officecli` 会长期保留，不是临时开关：固定验证版本只是本项目验证过的那一个，其他人完全可能在自己环境里使用更高或更低的版本。使用该参数时必须同时满足：
+
+- 先记录 `environment` 门禁，把「使用的是未验证版本」写进确认说明；
+- 生成报告与 `环境检查.json/md` 会如实记录实际版本号，便于回溯；
+- 该版本仍必须通过 OpenXML 结构校验、主题字体校验和 Word 真实页数校验，任何一项不过都按失败处理，不能因为"版本未经验证"就放宽校验。
 
 ## 写入策略
 

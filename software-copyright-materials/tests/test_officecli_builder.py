@@ -4,6 +4,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
@@ -11,6 +12,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from build_docx_from_md import (  # noqa: E402
     THEME_FONT_TARGETS,
+    build_parser,
     code_paragraph_commands,
     docx_checks,
     header_commands,
@@ -29,7 +31,7 @@ from common import (  # noqa: E402
     CODE_LINES_PER_PAGE,
     CODE_MAX_COLUMNS,
 )
-from officecli_backend import OfficeCliError, officecli_environment  # noqa: E402
+from officecli_backend import OfficeCli, OfficeCliError, officecli_environment  # noqa: E402
 
 
 NORMALIZED_THEME = (
@@ -180,6 +182,31 @@ class OfficeCliBuilderTests(unittest.TestCase):
         self.assertIn("【截图预留：第一页。】", prepared)
         self.assertIn("OCLI_IMAGE_0001", prepared)
         self.assertEqual(images[0]["alt"], "第二页")
+
+    def test_untested_officecli_flag_stays_available_for_other_versions(self) -> None:
+        parser = build_parser()
+
+        default_args = parser.parse_args(["--software-name", "示例软件"])
+        self.assertFalse(default_args.allow_untested_officecli)
+
+        allowed_args = parser.parse_args(
+            ["--software-name", "示例软件", "--allow-untested-officecli"]
+        )
+        self.assertTrue(allowed_args.allow_untested_officecli)
+
+    def test_officecli_rejects_other_versions_unless_explicitly_allowed(self) -> None:
+        fake = self.temp_dir / "officecli-fake"
+        fake.write_text("", encoding="utf-8")
+        with (
+            patch("officecli_backend.resolve_officecli", return_value=fake),
+            patch.object(OfficeCli, "_read_version", return_value="1.0.140"),
+        ):
+            with self.assertRaises(OfficeCliError) as raised:
+                OfficeCli(require_tested_version=True)
+            self.assertIn("--allow-untested-officecli", str(raised.exception))
+
+            untested = OfficeCli(require_tested_version=False)
+            self.assertEqual(untested.version, "1.0.140")
 
     def test_code_docx_pages_must_equal_the_page_count_in_its_name(self) -> None:
         preview_dir = self.temp_dir / "预览"

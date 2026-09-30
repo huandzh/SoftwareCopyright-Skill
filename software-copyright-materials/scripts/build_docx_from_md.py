@@ -683,14 +683,28 @@ def write_report(workdir: Path, outputs: list[Path], warnings: list[str], notes:
     return report
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """Command line surface of the final builder.
+
+    ``--allow-untested-officecli`` is a permanent escape hatch: the skill pins
+    one verified OfficeCLI version, but other users may run another version and
+    explicitly accept the compatibility risk.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--workdir", default="软件著作权申请资料")
     parser.add_argument("--software-name", required=True)
     parser.add_argument("--version", default="V1.0")
-    parser.add_argument("--allow-untested-officecli", action="store_true")
+    parser.add_argument(
+        "--allow-untested-officecli",
+        action="store_true",
+        help="Explicitly accept the risk of building with an OfficeCLI version other than the verified one",
+    )
     parser.add_argument("--skip-preview", action="store_true")
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
     workdir = Path(args.workdir)
     issues = confirmation_issues(workdir)
     if issues:

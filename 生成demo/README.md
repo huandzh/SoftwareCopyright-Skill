@@ -100,7 +100,8 @@
 <python> scripts/confirm_stage.py --workdir 软件著作权申请资料 --stage application-fields --note "<用户确认内容>"
 <python> scripts/confirm_stage.py --workdir 软件著作权申请资料 --stage markdown --note "<用户确认内容>"
 
-# 7. 正式生成（本 demo 使用固定验证版本 OfficeCLI 1.0.152，无需额外参数）
+# 7. 正式生成（本 demo 使用固定验证版本 OfficeCLI 1.0.152，无需额外参数；
+#    如果你本机是其他版本，请先记录 environment 门禁并加上 --allow-untested-officecli）
 <python> scripts/build_docx_from_md.py --workdir 软件著作权申请资料 \
   --software-name "StudioAgent AI视频制片平台软件" --version "V0.1.0" \
   --skip-preview
