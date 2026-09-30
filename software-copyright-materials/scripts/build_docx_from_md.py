@@ -274,7 +274,7 @@ def verify_docx_theme_fonts(cli: OfficeCli, output: Path) -> dict[str, str]:
 def normalize_docx_theme_fonts(cli: OfficeCli, output: Path) -> None:
     current = theme_xml_from_payload(cli.raw(output, "/theme"))
     normalized = normalize_theme_fonts_xml(current)
-    # OfficeCLI 1.0.151 may report success without persisting descendant
+    # OfficeCLI 1.0.152 may report success without persisting descendant
     # setattr operations on /theme. Replacing the complete root is reliable.
     cli.raw_set(output, "/theme", "/a:theme", "replace", normalized)
     verify_docx_theme_fonts(cli, output)

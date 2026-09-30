@@ -142,6 +142,15 @@ class WorkflowIntegrityTests(unittest.TestCase):
         path.write_text(json.dumps(confirmed, ensure_ascii=False), encoding="utf-8")
         self.assertFalse(confirmation_is_current(read_json(path)))
 
+    def test_officecli_pinned_version_matches_download_url_and_docs(self) -> None:
+        from officecli_backend import OFFICECLI_DOWNLOAD_URL, TESTED_OFFICECLI_VERSION  # noqa: PLC0415
+
+        self.assertIn(TESTED_OFFICECLI_VERSION, OFFICECLI_DOWNLOAD_URL)
+        skill = Path(__file__).resolve().parents[1] / "SKILL.md"
+        reference = Path(__file__).resolve().parents[1] / "references" / "officecli_backend.md"
+        self.assertIn(TESTED_OFFICECLI_VERSION, skill.read_text(encoding="utf-8"))
+        self.assertIn(TESTED_OFFICECLI_VERSION, reference.read_text(encoding="utf-8"))
+
     def test_software_name_gate_must_be_confirmed_before_business(self) -> None:
         draft = self.temp_dir / "草稿"
         draft.mkdir()

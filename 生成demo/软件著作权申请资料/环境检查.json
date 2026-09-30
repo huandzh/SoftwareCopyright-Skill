@@ -4,26 +4,26 @@
     "markdown_drafts": true,
     "application_txt": true,
     "officecli": true,
-    "officecli_tested_version": false,
-    "docx_create": false,
-    "docx_openxml_validate": false,
-    "docx_preview": false,
+    "officecli_tested_version": true,
+    "docx_create": true,
+    "docx_openxml_validate": true,
+    "docx_preview": true,
     "native_word_page_count_possible": true
   },
   "versions": {
     "python": "3.14.7",
     "officecli": "1.0.152",
-    "officecli_required": "1.0.151"
+    "officecli_required": "1.0.152"
   },
   "paths": {
     "officecli": "C:\\Users\\huandzh\\AppData\\Local\\OfficeCLI\\officecli.exe"
   },
   "officecli_install_state": "ready",
-  "final_docx_mode": "unavailable",
-  "recommendation": "正式 DOCX 统一依赖 OfficeCLI v1.0.151，不再使用 python-docx、Pandoc 或内置 .NET 工具包兜底。",
-  "install_prompt": "是否全局安装 OfficeCLI？命令：`irm https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.ps1 | iex`；已验证版本发布页：https://github.com/iOfficeAI/OfficeCLI/releases/tag/v1.0.151",
-  "requires_user_input": true,
-  "confirmation_stage": "environment",
-  "next_action": "当前 OfficeCLI 为 1.0.152，请切换到已验证版本 1.0.151；如确认自行承担兼容性风险，可在正式生成时显式使用 --allow-untested-officecli。",
+  "final_docx_mode": "officecli",
+  "recommendation": "OfficeCLI 1.0.152 已就绪；生成时禁用自动更新并使用原子 batch 写入。",
+  "install_prompt": "无需安装，固定版本可用。",
+  "requires_user_input": false,
+  "confirmation_stage": null,
+  "next_action": "OfficeCLI 固定版本已就绪，可以进入项目分析。",
   "officecli_error": ""
 }
