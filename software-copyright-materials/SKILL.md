@@ -547,7 +547,7 @@ pwsh "<SKILL_DIR>/scripts/fill_application_form.ps1" -Template "<官方模板>" 
 pwsh "<SKILL_DIR>/scripts/fill_application_form.ps1" -Verify "<已填写.docx>" -Draft "软件著作权申请资料/草稿/申请表信息.md"
 ```
 
-`validate` 只证明 OpenXML 结构可读，不能证明分页正确。Windows 且安装 Word 时由 OfficeCLI 使用 `stats --page-count` 读取自动分页后的真实页数；代码 Word 的真实页数必须等于文件名中的页数（默认前 40 页/后 40 页，`--slice-pages 30` 时为 30 页），否则生成失败并要求重新校准选材量，不得改回人工固定分页。其他环境先用 OfficeCLI HTML 预览，再用 Word/WPS 打开最终文件复核页数。只使用 OfficeCLI 后端，不引入其他 DOCX 渲染依赖。
+约束：模板原件不动，结果另存为 `<软件全称>-著作权申请表(已填写).docx`；证件类型/号码、联系人信息这类草稿里没有的值**不猜**，写完后列成清单交给用户；`-Verify` 报出的任何不一致都必须先解决（实测踩过：表单里开发完成日期是 6 月 15 日、草稿里是 10 月 10 日）。
 
 ## 何时询问用户
 
