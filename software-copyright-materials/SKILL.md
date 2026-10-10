@@ -488,6 +488,10 @@ metadata:
 
 正式生成只处理 `草稿/代码提取清单.json` 的 `outputs` 中声明的代码 Markdown，并清理当前软件名下与本次模式冲突的旧代码 DOCX。不能遍历目录后把前 30 页、前 40 页、后 30 页、后 40 页和全部代码等旧文件一起输出。代码 Word 的真实页数必须等于文件名中的页数（默认前 40 页 / 后 40 页，或 `--slice-pages 30` 时的 30 页），否则生成失败并要求重新校准选材量。
 
+★ **总页数相等 ≠ 每页都填满。** 生成脚本在页数校验之后还会调用 `scripts/code_layout.py`，用 Word COM 逐页读物理行数，断言「每页 ≥50 行、末页也满」；OfficeCLI 只给总页数，说不出这件事（实测：40 页全绿而第 40 页只有 16 行，后 40 页那次只有 5 行）。同一轮还会用 `scripts/count_manual_words.py` 读操作手册的 **Word 实测字数**，超过 1 万字上限即生成失败（确有需要时显式加 `--allow-long-manual`）。这两个复核需要 Windows + Microsoft Word，取不到时只在报告里写明「当前环境无法复核」，不静默通过。
+
+脚本在开工前会抢一个工作目录锁（`草稿/.workdir.lock`）：发现另一个会话正在写同一个 workdir 就停下并提示，避免两边互相覆盖；确认锁已陈旧时可加 `--ignore-lock`，或用 `workdir_lock.py --workdir <目录> --status/--clear` 查看与清理。
+
 输出：
 
 - `正式资料/申请表信息.txt`
@@ -508,6 +512,7 @@ metadata:
 2. 代码真实性：抽样检查代码片段能回溯到项目源码，且代码材料中不再残留注释（整行注释、**Python 文档字符串**都已删除，行尾注释已截掉，普通字符串内容保持原样）。
 3. 业务真实性：申请表和操作手册中的行业、目标用户、主要功能、操作流程能回溯到 `业务理解.md` 和项目文档。
 4. 一致性和格式：软件名称、版本号、页数规则（默认前 40 页 + 后 40 页共 80 页，`--slice-pages 30` 时为 60 页）、申请表字段、操作手册标题和截图引用是否一致。
+5. 每页填充与字数：用 `code_layout.py --mode layout` 核对代码材料「每页 ≥50 行、末页也满」；用 `count_manual_words.py --docx` 核对操作手册 Word 字数在 1 万字以内。
 
 可用命令：
 
@@ -517,6 +522,29 @@ officecli validate <生成的docx> --json
 officecli view <生成的docx> issues --json
 officecli view <生成的代码docx> stats --page-count --json
 officecli view <生成的docx> screenshot --grid auto --render auto -o <预览.png>
+<PYTHON> "<SKILL_DIR>/scripts/code_layout.py" --docx <代码docx> --mode layout --expected-pages 40
+<PYTHON> "<SKILL_DIR>/scripts/count_manual_words.py" --docx <操作手册docx>
+<PYTHON> "<SKILL_DIR>/scripts/confirm_stage.py" --workdir 软件著作权申请资料 --status
+```
+
+`validate` 只证明 OpenXML 结构可读，不能证明分页正确。Windows 且安装 Word 时由 OfficeCLI 使用 `stats --page-count` 读取自动分页后的真实页数，`code_layout.py` 再逐页读行数；代码 Word 的真实页数必须等于文件名中的页数（默认前 40 页/后 40 页，`--slice-pages 30` 时为 30 页）且每页填满，否则生成失败并要求重新校准选材量，不得改回人工固定分页。其他环境先用 OfficeCLI HTML 预览，再用 Word/WPS 打开最终文件复核页数。DOCX 仍只由 OfficeCLI 生成，`code_layout.py` / `count_manual_words.py` 只用 Word 读结果，不引入其他 DOCX 渲染依赖。
+
+★ **新增门禁必须做变异验证**：凡是新加的守护（测试或生成期校验），都要把它对应的旧行为改回去、确认它真的变红，并记录在 `tests/MUTATION_VERIFICATION.md`。永远绿的守护比没有守护更糟——它会让人以为已经查过了。
+
+### 13. 填写官方申请表模板（可选，用户提供模板时）
+
+用户给出官方空白申请表（`.doc` 或 `.docx`）时，登记时要提交的是模板本身，而不是我们生成的 `申请表信息.txt`：
+
+```bash
+# 先把模板里的字段注记抄成口径来源（口径变更时先更新它，再改脚本常量与门禁）
+pwsh "<SKILL_DIR>/scripts/dump_form_template.ps1" -Path "<官方模板>" -Out "软件著作权申请资料/草稿/字段口径来源.md"
+
+# 再按 草稿/申请表信息.md 填表：默认预演，确认无误才加 -Apply
+pwsh "<SKILL_DIR>/scripts/fill_application_form.ps1" -Template "<官方模板>" -Draft "软件著作权申请资料/草稿/申请表信息.md"
+pwsh "<SKILL_DIR>/scripts/fill_application_form.ps1" -Template "<官方模板>" -Draft "软件著作权申请资料/草稿/申请表信息.md" -Apply
+
+# 写完后回读校验：逐格比对草稿，并列出仍需用户提供的空位
+pwsh "<SKILL_DIR>/scripts/fill_application_form.ps1" -Verify "<已填写.docx>" -Draft "软件著作权申请资料/草稿/申请表信息.md"
 ```
 
 `validate` 只证明 OpenXML 结构可读，不能证明分页正确。Windows 且安装 Word 时由 OfficeCLI 使用 `stats --page-count` 读取自动分页后的真实页数；代码 Word 的真实页数必须等于文件名中的页数（默认前 40 页/后 40 页，`--slice-pages 30` 时为 30 页），否则生成失败并要求重新校准选材量，不得改回人工固定分页。其他环境先用 OfficeCLI HTML 预览，再用 Word/WPS 打开最终文件复核页数。只使用 OfficeCLI 后端，不引入其他 DOCX 渲染依赖。

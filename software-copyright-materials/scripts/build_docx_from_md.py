@@ -30,6 +30,8 @@ from common import (
     safe_filename,
 )
 from officecli_backend import OfficeCli, OfficeCliError, issue_count, json_data, structural_error_count
+import code_layout
+import count_manual_words
 
 
 DRAWINGML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -489,7 +491,7 @@ def build_manual_docx(
 
 
 def docx_checks(cli: OfficeCli, outputs: list[Path], estimated_pages: dict[Path, int], preview_dir: Path,
-                render_preview: bool = True) -> list[str]:
+                render_preview: bool = True, allow_long_manual: bool = False) -> list[str]:
     notes: list[str] = []
     if render_preview:
         ensure_dir(preview_dir)
@@ -529,6 +531,37 @@ def docx_checks(cli: OfficeCli, outputs: list[Path], estimated_pages: dict[Path,
                     f"- `{output.name}`：Word 自动分页为 {pages} 页，与草稿选材估算一致；"
                     "文档未插入人工分页符。"
                 )
+            # ★ 总页数相等不代表每页都填满：还要逐页读物理行数（OfficeCLI 不给这个数）。
+            if required_pages is not None:
+                ok, messages, _ = code_layout.verify_code_layout(
+                    output, expected_pages=required_pages
+                )
+                if not ok:
+                    raise OfficeCliError(
+                        "\n".join(messages)
+                        + "\n总页数相符但存在填不满的页，不能作为正式资料提交；请重新校准选材量。"
+                    )
+                notes.extend(f"- {message}" for message in messages)
+        else:
+            # 操作手册：按 Word 实测字数把关（中文标点也计入，草稿期自算会低估约 10%）。
+            measured = count_manual_words.measure_docx(output)
+            if measured.get("available"):
+                words = int(measured.get("word_count") or 0)
+                limit = count_manual_words.MANUAL_WORD_LIMIT
+                notes.append(
+                    f"- `{output.name}`：Word 实测 {words} 字、{measured.get('pages')} 页"
+                    f"（手册篇幅上限 {limit} 字）。"
+                )
+                if words > limit and not allow_long_manual:
+                    raise OfficeCliError(
+                        f"{output.name} 的 Word 字数为 {words}，超过手册篇幅上限 {limit} 字。"
+                        "请压缩「按可跟做的步骤写」后重新生成（确有需要时可显式加 --allow-long-manual）。"
+                    )
+            else:
+                notes.append(
+                    f"- `{output.name}`：当前环境无法取得 Word 实测字数（{measured.get('reason')}）；"
+                    "草稿期可用 `count_manual_words.py --md` 估算。"
+                )
         if render_preview:
             preview = preview_dir / f"{output.stem}.png"
             try:
@@ -543,7 +576,7 @@ def docx_checks(cli: OfficeCli, outputs: list[Path], estimated_pages: dict[Path,
 
 
 def build_all(workdir: Path, software_name: str, version: str, skip_preview: bool,
-              allow_untested_officecli: bool = False) -> dict[str, Any]:
+              allow_untested_officecli: bool = False, allow_long_manual: bool = False) -> dict[str, Any]:
     workdir = ensure_dir(workdir)
     draft_dir = workdir / "草稿"
     final_dir = ensure_dir(workdir / "正式资料")
@@ -665,7 +698,8 @@ def build_all(workdir: Path, software_name: str, version: str, skip_preview: boo
         warnings.append("缺少草稿/操作手册.md")
     docx_outputs = [path for path in outputs if path.suffix.lower() == ".docx"]
     notes = docx_checks(
-        cli, docx_outputs, estimated_pages, final_dir / "预览", render_preview=not skip_preview)
+        cli, docx_outputs, estimated_pages, final_dir / "预览", render_preview=not skip_preview,
+        allow_long_manual=allow_long_manual)
     if code_mode_note:
         notes.append(code_mode_note)
     if manual_screenshot_note:
