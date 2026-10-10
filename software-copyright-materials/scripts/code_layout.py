@@ -23,6 +23,9 @@ from pathlib import Path
 from typing import Any
 
 PROBE_SCRIPT = Path(__file__).resolve().parent / "word_docx_probe.ps1"
+# 提交规则：「除特定情况外，程序每页不少于 50 行」。与 common.CODE_LINES_PER_PAGE
+# （= 56，该版式的真实容量）必须保持 MIN <= CAPACITY：选材量低于这条规则，生成出来
+# 的材料就会卡在自己的门禁上；两者关系由 tests/test_officecli_builder.py 固定。
 MIN_CODE_LINES_PER_PAGE = 50
 
 

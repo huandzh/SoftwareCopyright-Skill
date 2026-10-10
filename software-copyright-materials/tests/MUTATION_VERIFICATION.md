@@ -14,6 +14,12 @@
 | M5 | `scripts/count_manual_words.py`（手册字数门禁） | `--limit 9000`（真实手册 9607 字） | ✅ 退出码 2，输出「Word 实测 9607 字…超出」 |
 | M6 | `scripts/workdir_lock.py`（并发锁） | 持锁状态下再次 `acquire()`；另用死 pid 造陈旧锁 | ✅ 前者 `SystemExit`「正被另一个会话写入」；后者打印「发现陈旧锁，已接管」并写入新锁（见 `tests/test_workdir_lock.py`） |
 
+## 2026-10-10 补记（阈值守卫）
+
+| # | 门禁 | 变异方式 | 结果 |
+| --- | --- | --- | --- |
+| M7 | `tests/test_officecli_builder.py::test_code_layout_thresholds_stay_consistent_with_the_capacity` | 把 `code_layout.MIN_CODE_LINES_PER_PAGE` 从 50 改成 60（超过版式真实容量 56） | ✅ 该测试失败：`AssertionError: 60 not less than or equal to 56`；改回 50 后恢复 OK |
+
 复现命令（M4/M5 依赖 Windows + Microsoft Word）：
 
 ```bash

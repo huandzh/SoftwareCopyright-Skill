@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from inspect import signature
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,6 +11,7 @@ from unittest.mock import patch
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
+import code_layout  # noqa: E402
 from build_docx_from_md import (  # noqa: E402
     THEME_FONT_TARGETS,
     build_parser,
@@ -95,6 +97,19 @@ class OfficeCliBuilderTests(unittest.TestCase):
         # spacing => 56 lines); a smaller value leaves the last page empty.
         self.assertEqual(CODE_LINES_PER_PAGE, 56)
         self.assertEqual(CODE_MAX_COLUMNS, 90)
+
+    def test_code_layout_thresholds_stay_consistent_with_the_capacity(self) -> None:
+        # CODE_LINES_PER_PAGE is the real capacity used for slicing; the gate
+        # threshold is the submission rule (>= 50 lines per page). Slicing below
+        # the rule would make every generated material fail its own gate, and a
+        # threshold above the capacity could never be met - keep them tied.
+        self.assertLessEqual(code_layout.MIN_CODE_LINES_PER_PAGE, CODE_LINES_PER_PAGE)
+        self.assertEqual(code_layout.MIN_CODE_LINES_PER_PAGE, 50)
+        self.assertEqual(
+            signature(code_layout.verify_code_layout)
+            .parameters["min_lines_per_page"].default,
+            code_layout.MIN_CODE_LINES_PER_PAGE,
+        )
 
     def test_parse_code_pages_preserves_page_numbers(self) -> None:
         path = self.temp_dir / "code.md"

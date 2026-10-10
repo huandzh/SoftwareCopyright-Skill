@@ -271,6 +271,10 @@ MAX_SOURCE_FILE_BYTES = 800_000
 #   usable height = 29.7cm - 2 * 1.8cm = 26.1cm = 739.8pt
 #   739.8pt / 13pt = 56.9 -> 56 lines per page (confirmed by Word repagination:
 #   every page of a 2240-paragraph document holds exactly 56 lines).
+# The submission rule is the other constant: code_layout.MIN_CODE_LINES_PER_PAGE
+# (= 50 lines per page) is what the Word-side gate asserts, and it must stay
+# <= CODE_LINES_PER_PAGE, otherwise every generated material would fail its own
+# gate. tests/test_officecli_builder.py pins that relation.
 CODE_FONT_NAME = "Consolas"
 CODE_FONT_SIZE = "8pt"
 CODE_LINE_SPACING = "13pt"
