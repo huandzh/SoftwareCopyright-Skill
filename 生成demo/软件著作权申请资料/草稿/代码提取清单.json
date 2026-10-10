@@ -3,26 +3,28 @@
   "version": "V0.1.0",
   "project_root": "G:\\github\\SoftwareCopyright-Skill\\生成demo\\模拟项目",
   "file_count": 68,
-  "material_line_count": 5445,
+  "material_line_count": 5274,
   "source_line_count": 6318,
-  "selected_source_line_count": 5263,
-  "lines_per_page": 55,
+  "selected_source_line_count": 5092,
+  "lines_per_page": 56,
   "max_code_columns": 90,
   "slice_pages": 40,
   "comment_stripping": {
     "enabled": true,
     "comment_only_lines": 188,
     "inline_comment_lines": 22,
+    "docstring_lines": 171,
+    "docstring_strip_failed_files": [],
     "unsupported_files": []
   },
-  "total_pages": 99,
+  "total_pages": 95,
   "submitted_page_count": 80,
   "target_pages": 80,
-  "available_candidate_line_count": 5446,
-  "available_candidate_pages": 100,
+  "available_candidate_line_count": 5314,
+  "available_candidate_pages": 95,
   "supplement_status": "候选源码可达到前40页/后40页要求",
   "mode": "front40_back40",
-  "selection_file": "生成demo\\软件著作权申请资料\\草稿\\代码文件选择.json",
+  "selection_file": "软件著作权申请资料\\草稿\\代码文件选择.json",
   "outputs": [
     "代码-前40页.md",
     "代码-后40页.md"
@@ -31,16 +33,17 @@
     {
       "path": "backend/app/api/routes/assets.py",
       "source_line_count": 148,
-      "blank_line_count": 20,
+      "blank_line_count": 26,
       "comment_only_line_count": 1,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 6,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 148,
-      "selected_line_count": 128,
-      "material_line_count": 130,
+      "selected_line_count": 122,
+      "material_line_count": 124,
       "material_line_start": 1,
-      "material_line_end": 130
+      "material_line_end": 124
     },
     {
       "path": "backend/app/api/routes/auth.py",
@@ -48,167 +51,179 @@
       "blank_line_count": 0,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 1,
       "selected_line_count": 1,
       "material_line_count": 2,
-      "material_line_start": 131,
-      "material_line_end": 132
+      "material_line_start": 125,
+      "material_line_end": 126
     },
     {
       "path": "backend/app/api/routes/billing.py",
       "source_line_count": 110,
-      "blank_line_count": 24,
+      "blank_line_count": 30,
       "comment_only_line_count": 1,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 6,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 110,
-      "selected_line_count": 86,
-      "material_line_count": 91,
-      "material_line_start": 133,
-      "material_line_end": 223
+      "selected_line_count": 80,
+      "material_line_count": 85,
+      "material_line_start": 127,
+      "material_line_end": 211
     },
     {
       "path": "backend/app/api/routes/chat.py",
       "source_line_count": 199,
-      "blank_line_count": 35,
+      "blank_line_count": 43,
       "comment_only_line_count": 2,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 8,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 199,
-      "selected_line_count": 164,
-      "material_line_count": 166,
-      "material_line_start": 224,
-      "material_line_end": 389
+      "selected_line_count": 156,
+      "material_line_count": 158,
+      "material_line_start": 212,
+      "material_line_end": 369
     },
     {
       "path": "backend/app/api/routes/projects.py",
       "source_line_count": 176,
-      "blank_line_count": 22,
+      "blank_line_count": 30,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 8,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 176,
-      "selected_line_count": 154,
-      "material_line_count": 156,
-      "material_line_start": 390,
-      "material_line_end": 545
+      "selected_line_count": 146,
+      "material_line_count": 148,
+      "material_line_start": 370,
+      "material_line_end": 517
     },
     {
       "path": "backend/app/api/routes/tasks.py",
       "source_line_count": 146,
-      "blank_line_count": 18,
+      "blank_line_count": 25,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 7,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 146,
-      "selected_line_count": 128,
-      "material_line_count": 132,
-      "material_line_start": 546,
-      "material_line_end": 677
+      "selected_line_count": 121,
+      "material_line_count": 125,
+      "material_line_start": 518,
+      "material_line_end": 642
     },
     {
       "path": "backend/app/api/deps.py",
       "source_line_count": 37,
-      "blank_line_count": 7,
+      "blank_line_count": 10,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 3,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 37,
-      "selected_line_count": 30,
-      "material_line_count": 33,
-      "material_line_start": 678,
-      "material_line_end": 710
+      "selected_line_count": 27,
+      "material_line_count": 30,
+      "material_line_start": 643,
+      "material_line_end": 672
     },
     {
       "path": "backend/app/core/config.py",
       "source_line_count": 57,
-      "blank_line_count": 12,
+      "blank_line_count": 14,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 2,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 57,
-      "selected_line_count": 45,
-      "material_line_count": 53,
-      "material_line_start": 711,
-      "material_line_end": 763
+      "selected_line_count": 43,
+      "material_line_count": 51,
+      "material_line_start": 673,
+      "material_line_end": 723
     },
     {
       "path": "backend/app/core/database.py",
       "source_line_count": 63,
-      "blank_line_count": 15,
+      "blank_line_count": 19,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 4,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 63,
-      "selected_line_count": 48,
-      "material_line_count": 50,
-      "material_line_start": 764,
-      "material_line_end": 813
+      "selected_line_count": 44,
+      "material_line_count": 46,
+      "material_line_start": 724,
+      "material_line_end": 769
     },
     {
       "path": "backend/app/models/__init__.py",
       "source_line_count": 123,
-      "blank_line_count": 35,
+      "blank_line_count": 45,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 10,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 123,
-      "selected_line_count": 88,
-      "material_line_count": 95,
-      "material_line_start": 814,
-      "material_line_end": 908
+      "selected_line_count": 78,
+      "material_line_count": 85,
+      "material_line_start": 770,
+      "material_line_end": 854
     },
     {
       "path": "backend/app/models/extra.py",
       "source_line_count": 102,
-      "blank_line_count": 27,
+      "blank_line_count": 32,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 5,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 102,
-      "selected_line_count": 75,
-      "material_line_count": 87,
-      "material_line_start": 909,
-      "material_line_end": 995
+      "selected_line_count": 70,
+      "material_line_count": 82,
+      "material_line_start": 855,
+      "material_line_end": 936
     },
     {
       "path": "backend/app/schemas/__init__.py",
       "source_line_count": 120,
-      "blank_line_count": 35,
+      "blank_line_count": 38,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 3,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 120,
-      "selected_line_count": 85,
-      "material_line_count": 86,
-      "material_line_start": 996,
-      "material_line_end": 1081
+      "selected_line_count": 82,
+      "material_line_count": 83,
+      "material_line_start": 937,
+      "material_line_end": 1019
     },
     {
       "path": "backend/app/services/agent_orchestrator.py",
       "source_line_count": 223,
-      "blank_line_count": 32,
+      "blank_line_count": 47,
       "comment_only_line_count": 2,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 15,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 223,
-      "selected_line_count": 191,
-      "material_line_count": 201,
-      "material_line_start": 1082,
-      "material_line_end": 1282
+      "selected_line_count": 176,
+      "material_line_count": 186,
+      "material_line_start": 1020,
+      "material_line_end": 1205
     },
     {
       "path": "backend/app/services/agents/__init__.py",
@@ -216,181 +231,194 @@
       "blank_line_count": 0,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 6,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 6,
       "selected_line_count": 6,
       "material_line_count": 7,
-      "material_line_start": 1283,
-      "material_line_end": 1289
+      "material_line_start": 1206,
+      "material_line_end": 1212
     },
     {
       "path": "backend/app/services/agents/script_agent.py",
       "source_line_count": 71,
-      "blank_line_count": 13,
+      "blank_line_count": 20,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 7,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 71,
-      "selected_line_count": 58,
-      "material_line_count": 59,
-      "material_line_start": 1290,
-      "material_line_end": 1348
+      "selected_line_count": 51,
+      "material_line_count": 52,
+      "material_line_start": 1213,
+      "material_line_end": 1264
     },
     {
       "path": "backend/app/services/agents/sfx_agent.py",
       "source_line_count": 71,
-      "blank_line_count": 13,
+      "blank_line_count": 20,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 7,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 71,
-      "selected_line_count": 58,
-      "material_line_count": 59,
-      "material_line_start": 1349,
-      "material_line_end": 1407
+      "selected_line_count": 51,
+      "material_line_count": 52,
+      "material_line_start": 1265,
+      "material_line_end": 1316
     },
     {
       "path": "backend/app/services/agents/storyboard_agent.py",
       "source_line_count": 71,
-      "blank_line_count": 13,
+      "blank_line_count": 20,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 7,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 71,
-      "selected_line_count": 58,
-      "material_line_count": 59,
-      "material_line_start": 1408,
-      "material_line_end": 1466
+      "selected_line_count": 51,
+      "material_line_count": 52,
+      "material_line_start": 1317,
+      "material_line_end": 1368
     },
     {
       "path": "backend/app/services/agents/video_agent.py",
       "source_line_count": 71,
-      "blank_line_count": 13,
+      "blank_line_count": 20,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 7,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 71,
-      "selected_line_count": 58,
-      "material_line_count": 59,
-      "material_line_start": 1467,
-      "material_line_end": 1525
+      "selected_line_count": 51,
+      "material_line_count": 52,
+      "material_line_start": 1369,
+      "material_line_end": 1420
     },
     {
       "path": "backend/app/services/agents/visual_agent.py",
       "source_line_count": 71,
-      "blank_line_count": 13,
+      "blank_line_count": 20,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 7,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 71,
-      "selected_line_count": 58,
-      "material_line_count": 59,
-      "material_line_start": 1526,
-      "material_line_end": 1584
+      "selected_line_count": 51,
+      "material_line_count": 52,
+      "material_line_start": 1421,
+      "material_line_end": 1472
     },
     {
       "path": "backend/app/services/agents/voice_agent.py",
       "source_line_count": 71,
-      "blank_line_count": 13,
+      "blank_line_count": 20,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 7,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 71,
-      "selected_line_count": 58,
-      "material_line_count": 59,
-      "material_line_start": 1585,
-      "material_line_end": 1643
+      "selected_line_count": 51,
+      "material_line_count": 52,
+      "material_line_start": 1473,
+      "material_line_end": 1524
     },
     {
       "path": "backend/app/services/budget_guard.py",
       "source_line_count": 61,
-      "blank_line_count": 14,
+      "blank_line_count": 19,
       "comment_only_line_count": 1,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 5,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 61,
-      "selected_line_count": 47,
-      "material_line_count": 49,
-      "material_line_start": 1644,
-      "material_line_end": 1692
+      "selected_line_count": 42,
+      "material_line_count": 44,
+      "material_line_start": 1525,
+      "material_line_end": 1568
     },
     {
       "path": "backend/app/services/cost_service.py",
       "source_line_count": 136,
-      "blank_line_count": 20,
+      "blank_line_count": 26,
       "comment_only_line_count": 1,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 6,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 136,
-      "selected_line_count": 116,
-      "material_line_count": 122,
-      "material_line_start": 1693,
-      "material_line_end": 1814
+      "selected_line_count": 110,
+      "material_line_count": 116,
+      "material_line_start": 1569,
+      "material_line_end": 1684
     },
     {
       "path": "backend/app/services/image_generation.py",
       "source_line_count": 159,
-      "blank_line_count": 29,
+      "blank_line_count": 41,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 12,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 159,
-      "selected_line_count": 130,
-      "material_line_count": 131,
-      "material_line_start": 1815,
-      "material_line_end": 1945
+      "selected_line_count": 118,
+      "material_line_count": 119,
+      "material_line_start": 1685,
+      "material_line_end": 1803
     },
     {
       "path": "backend/app/services/notification.py",
       "source_line_count": 78,
-      "blank_line_count": 18,
+      "blank_line_count": 25,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 7,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 78,
-      "selected_line_count": 60,
-      "material_line_count": 63,
-      "material_line_start": 1946,
-      "material_line_end": 2008
+      "selected_line_count": 53,
+      "material_line_count": 56,
+      "material_line_start": 1804,
+      "material_line_end": 1859
     },
     {
       "path": "backend/app/services/prompt_templates.py",
       "source_line_count": 67,
-      "blank_line_count": 11,
+      "blank_line_count": 13,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 2,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 67,
-      "selected_line_count": 56,
-      "material_line_count": 57,
-      "material_line_start": 2009,
-      "material_line_end": 2065
+      "selected_line_count": 54,
+      "material_line_count": 55,
+      "material_line_start": 1860,
+      "material_line_end": 1914
     },
     {
       "path": "backend/app/services/script_analysis.py",
       "source_line_count": 116,
-      "blank_line_count": 21,
+      "blank_line_count": 28,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 7,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 116,
-      "selected_line_count": 95,
-      "material_line_count": 97,
-      "material_line_start": 2066,
-      "material_line_end": 2162
+      "selected_line_count": 88,
+      "material_line_count": 90,
+      "material_line_start": 1915,
+      "material_line_end": 2004
     },
     {
       "path": "backend/app/services/storage.py",
@@ -398,27 +426,29 @@
       "blank_line_count": 0,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 1,
       "selected_line_count": 1,
       "material_line_count": 2,
-      "material_line_start": 2163,
-      "material_line_end": 2164
+      "material_line_start": 2005,
+      "material_line_end": 2006
     },
     {
       "path": "backend/app/services/storyboard_parser.py",
       "source_line_count": 130,
-      "blank_line_count": 23,
+      "blank_line_count": 30,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 7,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 130,
-      "selected_line_count": 107,
-      "material_line_count": 110,
-      "material_line_start": 2165,
-      "material_line_end": 2274
+      "selected_line_count": 100,
+      "material_line_count": 103,
+      "material_line_start": 2007,
+      "material_line_end": 2109
     },
     {
       "path": "backend/app/services/tts_service.py",
@@ -426,13 +456,14 @@
       "blank_line_count": 0,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 1,
       "selected_line_count": 1,
       "material_line_count": 2,
-      "material_line_start": 2275,
-      "material_line_end": 2276
+      "material_line_start": 2110,
+      "material_line_end": 2111
     },
     {
       "path": "backend/app/services/video_pipeline.py",
@@ -440,27 +471,29 @@
       "blank_line_count": 0,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 1,
       "selected_line_count": 1,
       "material_line_count": 2,
-      "material_line_start": 2277,
-      "material_line_end": 2278
+      "material_line_start": 2112,
+      "material_line_end": 2113
     },
     {
       "path": "backend/app/workers/generation_tasks.py",
       "source_line_count": 120,
-      "blank_line_count": 29,
+      "blank_line_count": 35,
       "comment_only_line_count": 0,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 6,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 120,
-      "selected_line_count": 91,
-      "material_line_count": 94,
-      "material_line_start": 2279,
-      "material_line_end": 2372
+      "selected_line_count": 85,
+      "material_line_count": 88,
+      "material_line_start": 2114,
+      "material_line_end": 2201
     },
     {
       "path": "frontend/app/assets/page.tsx",
@@ -468,13 +501,14 @@
       "blank_line_count": 14,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 164,
       "selected_line_count": 150,
       "material_line_count": 153,
-      "material_line_start": 2373,
-      "material_line_end": 2525
+      "material_line_start": 2202,
+      "material_line_end": 2354
     },
     {
       "path": "frontend/app/billing/page.tsx",
@@ -482,13 +516,14 @@
       "blank_line_count": 15,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 93,
       "selected_line_count": 78,
       "material_line_count": 82,
-      "material_line_start": 2526,
-      "material_line_end": 2607
+      "material_line_start": 2355,
+      "material_line_end": 2436
     },
     {
       "path": "frontend/app/layout.tsx",
@@ -496,13 +531,14 @@
       "blank_line_count": 8,
       "comment_only_line_count": 6,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 27,
       "selected_line_count": 19,
       "material_line_count": 20,
-      "material_line_start": 2608,
-      "material_line_end": 2627
+      "material_line_start": 2437,
+      "material_line_end": 2456
     },
     {
       "path": "frontend/app/login/page.tsx",
@@ -510,13 +546,14 @@
       "blank_line_count": 15,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 119,
       "selected_line_count": 104,
       "material_line_count": 108,
-      "material_line_start": 2628,
-      "material_line_end": 2735
+      "material_line_start": 2457,
+      "material_line_end": 2564
     },
     {
       "path": "frontend/app/page.tsx",
@@ -524,13 +561,14 @@
       "blank_line_count": 20,
       "comment_only_line_count": 7,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 148,
       "selected_line_count": 128,
       "material_line_count": 134,
-      "material_line_start": 2736,
-      "material_line_end": 2869
+      "material_line_start": 2565,
+      "material_line_end": 2698
     },
     {
       "path": "frontend/app/projects/[id]/export/page.tsx",
@@ -538,13 +576,14 @@
       "blank_line_count": 12,
       "comment_only_line_count": 4,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 104,
       "selected_line_count": 92,
       "material_line_count": 93,
-      "material_line_start": 2870,
-      "material_line_end": 2962
+      "material_line_start": 2699,
+      "material_line_end": 2791
     },
     {
       "path": "frontend/app/projects/[id]/page.tsx",
@@ -552,13 +591,14 @@
       "blank_line_count": 18,
       "comment_only_line_count": 7,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 150,
       "selected_line_count": 132,
       "material_line_count": 134,
-      "material_line_start": 2963,
-      "material_line_end": 3096
+      "material_line_start": 2792,
+      "material_line_end": 2925
     },
     {
       "path": "frontend/app/projects/[id]/review/page.tsx",
@@ -566,13 +606,14 @@
       "blank_line_count": 9,
       "comment_only_line_count": 4,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 41,
       "selected_line_count": 32,
       "material_line_count": 34,
-      "material_line_start": 3097,
-      "material_line_end": 3130
+      "material_line_start": 2926,
+      "material_line_end": 2959
     },
     {
       "path": "frontend/store/projectStore.ts",
@@ -580,13 +621,14 @@
       "blank_line_count": 12,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 70,
       "selected_line_count": 58,
       "material_line_count": 60,
-      "material_line_start": 3131,
-      "material_line_end": 3190
+      "material_line_start": 2960,
+      "material_line_end": 3019
     },
     {
       "path": "frontend/components/AgentStatusBoard.tsx",
@@ -594,13 +636,14 @@
       "blank_line_count": 11,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 73,
       "selected_line_count": 62,
       "material_line_count": 65,
-      "material_line_start": 3191,
-      "material_line_end": 3255
+      "material_line_start": 3020,
+      "material_line_end": 3084
     },
     {
       "path": "frontend/components/AppShell.tsx",
@@ -608,13 +651,14 @@
       "blank_line_count": 10,
       "comment_only_line_count": 6,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 53,
       "selected_line_count": 43,
       "material_line_count": 45,
-      "material_line_start": 3256,
-      "material_line_end": 3300
+      "material_line_start": 3085,
+      "material_line_end": 3129
     },
     {
       "path": "frontend/components/AssetPanel.tsx",
@@ -622,13 +666,14 @@
       "blank_line_count": 13,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 89,
       "selected_line_count": 76,
       "material_line_count": 78,
-      "material_line_start": 3301,
-      "material_line_end": 3378
+      "material_line_start": 3130,
+      "material_line_end": 3207
     },
     {
       "path": "frontend/components/CandidatePicker.tsx",
@@ -636,13 +681,14 @@
       "blank_line_count": 15,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 106,
       "selected_line_count": 91,
       "material_line_count": 96,
-      "material_line_start": 3379,
-      "material_line_end": 3474
+      "material_line_start": 3208,
+      "material_line_end": 3303
     },
     {
       "path": "frontend/components/ChatPanel.tsx",
@@ -650,13 +696,14 @@
       "blank_line_count": 18,
       "comment_only_line_count": 7,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 150,
       "selected_line_count": 132,
       "material_line_count": 141,
-      "material_line_start": 3475,
-      "material_line_end": 3615
+      "material_line_start": 3304,
+      "material_line_end": 3444
     },
     {
       "path": "frontend/components/CostSummary.tsx",
@@ -664,13 +711,14 @@
       "blank_line_count": 11,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 54,
       "selected_line_count": 43,
       "material_line_count": 45,
-      "material_line_start": 3616,
-      "material_line_end": 3660
+      "material_line_start": 3445,
+      "material_line_end": 3489
     },
     {
       "path": "frontend/components/dialogs/AssetCompareDialog.tsx",
@@ -678,13 +726,14 @@
       "blank_line_count": 19,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 130,
       "selected_line_count": 111,
       "material_line_count": 114,
-      "material_line_start": 3661,
-      "material_line_end": 3774
+      "material_line_start": 3490,
+      "material_line_end": 3603
     },
     {
       "path": "frontend/components/dialogs/BudgetAlertDialog.tsx",
@@ -692,13 +741,14 @@
       "blank_line_count": 19,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 130,
       "selected_line_count": 111,
       "material_line_count": 113,
-      "material_line_start": 3775,
-      "material_line_end": 3887
+      "material_line_start": 3604,
+      "material_line_end": 3716
     },
     {
       "path": "frontend/components/dialogs/DeleteConfirmDialog.tsx",
@@ -706,13 +756,14 @@
       "blank_line_count": 19,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 130,
       "selected_line_count": 111,
       "material_line_count": 114,
-      "material_line_start": 3888,
-      "material_line_end": 4001
+      "material_line_start": 3717,
+      "material_line_end": 3830
     },
     {
       "path": "frontend/components/dialogs/ExportDialog.tsx",
@@ -720,13 +771,14 @@
       "blank_line_count": 19,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 130,
       "selected_line_count": 111,
       "material_line_count": 113,
-      "material_line_start": 4002,
-      "material_line_end": 4114
+      "material_line_start": 3831,
+      "material_line_end": 3943
     },
     {
       "path": "frontend/components/dialogs/ModelProfileDialog.tsx",
@@ -734,13 +786,14 @@
       "blank_line_count": 19,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 130,
       "selected_line_count": 111,
       "material_line_count": 114,
-      "material_line_start": 4115,
-      "material_line_end": 4228
+      "material_line_start": 3944,
+      "material_line_end": 4057
     },
     {
       "path": "frontend/components/dialogs/ProjectSettingsDialog.tsx",
@@ -748,13 +801,14 @@
       "blank_line_count": 19,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 130,
       "selected_line_count": 111,
       "material_line_count": 114,
-      "material_line_start": 4229,
-      "material_line_end": 4342
+      "material_line_start": 4058,
+      "material_line_end": 4171
     },
     {
       "path": "frontend/components/GenerationTimeline.tsx",
@@ -762,13 +816,14 @@
       "blank_line_count": 10,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 54,
       "selected_line_count": 44,
       "material_line_count": 47,
-      "material_line_start": 4343,
-      "material_line_end": 4389
+      "material_line_start": 4172,
+      "material_line_end": 4218
     },
     {
       "path": "frontend/components/ProjectCard.tsx",
@@ -776,13 +831,14 @@
       "blank_line_count": 15,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 1,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 84,
       "selected_line_count": 69,
       "material_line_count": 71,
-      "material_line_start": 4390,
-      "material_line_end": 4460
+      "material_line_start": 4219,
+      "material_line_end": 4289
     },
     {
       "path": "frontend/hooks/useAssets.ts",
@@ -790,13 +846,14 @@
       "blank_line_count": 14,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 93,
       "selected_line_count": 79,
       "material_line_count": 81,
-      "material_line_start": 4461,
-      "material_line_end": 4541
+      "material_line_start": 4290,
+      "material_line_end": 4370
     },
     {
       "path": "frontend/hooks/useBilling.ts",
@@ -804,13 +861,14 @@
       "blank_line_count": 10,
       "comment_only_line_count": 4,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 37,
       "selected_line_count": 27,
       "material_line_count": 28,
-      "material_line_start": 4542,
-      "material_line_end": 4569
+      "material_line_start": 4371,
+      "material_line_end": 4398
     },
     {
       "path": "frontend/hooks/useChatStream.ts",
@@ -818,13 +876,14 @@
       "blank_line_count": 11,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 109,
       "selected_line_count": 98,
       "material_line_count": 99,
-      "material_line_start": 4570,
-      "material_line_end": 4668
+      "material_line_start": 4399,
+      "material_line_end": 4497
     },
     {
       "path": "frontend/hooks/useProjects.ts",
@@ -832,13 +891,14 @@
       "blank_line_count": 13,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 57,
       "selected_line_count": 44,
       "material_line_count": 47,
-      "material_line_start": 4669,
-      "material_line_end": 4715
+      "material_line_start": 4498,
+      "material_line_end": 4544
     },
     {
       "path": "frontend/hooks/useSession.ts",
@@ -846,13 +906,14 @@
       "blank_line_count": 10,
       "comment_only_line_count": 4,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 65,
       "selected_line_count": 55,
       "material_line_count": 56,
-      "material_line_start": 4716,
-      "material_line_end": 4771
+      "material_line_start": 4545,
+      "material_line_end": 4600
     },
     {
       "path": "frontend/hooks/useTaskProgress.ts",
@@ -860,13 +921,14 @@
       "blank_line_count": 10,
       "comment_only_line_count": 5,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 55,
       "selected_line_count": 45,
       "material_line_count": 46,
-      "material_line_start": 4772,
-      "material_line_end": 4817
+      "material_line_start": 4601,
+      "material_line_end": 4646
     },
     {
       "path": "frontend/lib/api.ts",
@@ -874,13 +936,14 @@
       "blank_line_count": 26,
       "comment_only_line_count": 3,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 142,
       "selected_line_count": 116,
       "material_line_count": 120,
-      "material_line_start": 4818,
-      "material_line_end": 4937
+      "material_line_start": 4647,
+      "material_line_end": 4766
     },
     {
       "path": "frontend/lib/constants.ts",
@@ -888,13 +951,14 @@
       "blank_line_count": 8,
       "comment_only_line_count": 1,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 55,
       "selected_line_count": 47,
       "material_line_count": 48,
-      "material_line_start": 4938,
-      "material_line_end": 4985
+      "material_line_start": 4767,
+      "material_line_end": 4814
     },
     {
       "path": "frontend/lib/format.ts",
@@ -902,13 +966,14 @@
       "blank_line_count": 8,
       "comment_only_line_count": 2,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 69,
       "selected_line_count": 61,
       "material_line_count": 63,
-      "material_line_start": 4986,
-      "material_line_end": 5048
+      "material_line_start": 4815,
+      "material_line_end": 4877
     },
     {
       "path": "frontend/lib/permissions.ts",
@@ -916,13 +981,14 @@
       "blank_line_count": 6,
       "comment_only_line_count": 2,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 49,
       "selected_line_count": 43,
       "material_line_count": 45,
-      "material_line_start": 5049,
-      "material_line_end": 5093
+      "material_line_start": 4878,
+      "material_line_end": 4922
     },
     {
       "path": "frontend/lib/sse.ts",
@@ -930,13 +996,14 @@
       "blank_line_count": 22,
       "comment_only_line_count": 12,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 94,
       "selected_line_count": 72,
       "material_line_count": 74,
-      "material_line_start": 5094,
-      "material_line_end": 5167
+      "material_line_start": 4923,
+      "material_line_end": 4996
     },
     {
       "path": "frontend/lib/types.ts",
@@ -944,13 +1011,14 @@
       "blank_line_count": 19,
       "comment_only_line_count": 2,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 138,
       "selected_line_count": 119,
       "material_line_count": 120,
-      "material_line_start": 5168,
-      "material_line_end": 5287
+      "material_line_start": 4997,
+      "material_line_end": 5116
     },
     {
       "path": "frontend/lib/validators.ts",
@@ -958,13 +1026,14 @@
       "blank_line_count": 8,
       "comment_only_line_count": 2,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 70,
       "selected_line_count": 62,
       "material_line_count": 63,
-      "material_line_start": 5288,
-      "material_line_end": 5350
+      "material_line_start": 5117,
+      "material_line_end": 5179
     },
     {
       "path": "frontend/styles/globals.css",
@@ -972,13 +1041,14 @@
       "blank_line_count": 25,
       "comment_only_line_count": 7,
       "inline_comment_line_count": 0,
+      "docstring_line_count": 0,
       "comment_stripping_supported": true,
       "selected_line_start": 1,
       "selected_line_end": 119,
       "selected_line_count": 94,
       "material_line_count": 95,
-      "material_line_start": 5351,
-      "material_line_end": 5445
+      "material_line_start": 5180,
+      "material_line_end": 5274
     }
   ],
   "safe_software_filename": "StudioAgent AI视频制片平台软件"

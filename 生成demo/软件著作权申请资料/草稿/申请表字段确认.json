@@ -1,7 +1,7 @@
 {
   "application_fields_confirmed": true,
-  "confirmation_note": "演示：按最终选材量重新确认",
-  "confirmed_at": "2026-09-30T03:07:13+00:00",
-  "application_md_sha256": "58c979dcb189213658e0e1c5c21590a8dfc1bee071568ec9a1b532ac2e0685dc",
-  "confirmed_content_sha256": "d2cdbdfa9d93d797e5d313172fcf55388c5764e91b2a80afa506828e279ffcb9"
+  "confirmation_note": "演示：按新口径重新确认申请表字段",
+  "confirmed_at": "2026-10-10T12:12:04+00:00",
+  "application_md_sha256": "9f5bd92a5168fd7c5df38a8d2006fd9b1f10caa2d7c88b28e0a92a918ad7ab4b",
+  "confirmed_content_sha256": "c139f385c08e603c35cf80da7176641ac75a06548b8f6ae5c898c6c5369a6549"
 }
