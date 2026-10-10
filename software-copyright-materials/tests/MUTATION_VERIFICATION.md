@@ -19,6 +19,7 @@
 | # | 门禁 | 变异方式 | 结果 |
 | --- | --- | --- | --- |
 | M7 | `tests/test_officecli_builder.py::test_code_layout_thresholds_stay_consistent_with_the_capacity` | 把 `code_layout.MIN_CODE_LINES_PER_PAGE` 从 50 改成 60（超过版式真实容量 56） | ✅ 该测试失败：`AssertionError: 60 not less than or equal to 56`；改回 50 后恢复 OK |
+| M8 | `tests/test_business_context.py`（技术特点说明透传） | 从 `normalize_model_context` 的输出里删掉 `technical_characteristics_note` | ✅ 2 个用例报 `KeyError: 'technical_characteristics_note'`（说明 D 组口径只靠 `generate_application_info.py` 是接不上的）；补回后恢复 OK |
 
 复现命令（M4/M5 依赖 Windows + Microsoft Word）：
 

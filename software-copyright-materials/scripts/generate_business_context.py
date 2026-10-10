@@ -14,6 +14,8 @@ from common import (
     MAIN_FUNCTION_LONG_MAX,
     MAIN_FUNCTION_LONG_MIN,
     MAIN_FUNCTION_SHORT_LIMIT,
+    TECHNICAL_CHARACTERISTIC_LIMIT,
+    TECHNICAL_CHARACTERISTIC_STACK_KEYWORDS,
     TECHNICAL_CHARACTERISTIC_TAGS,
     ensure_dir,
     is_document_candidate,
@@ -241,6 +243,7 @@ def write_model_template(path: Path, evidence: dict[str, Any]) -> None:
         "main_functions": "",
         "main_functions_short": "",
         "technical_characteristics": [],
+        "technical_characteristics_note": "",
         "software_technical_option": "应用软件",
         "software_category": "应用软件",
         "manual_sections": [
@@ -282,8 +285,9 @@ def write_model_template(path: Path, evidence: dict[str, Any]) -> None:
             "manual_modules 要按当前项目真实页面、导航入口、按钮、输入限制、系统反馈和截图位置编写，不能只写抽象功能名。",
             "不要照抄范本文案；范本只说明手册需要具体、可操作、能给审核员看懂。",
             "不要用关键词表决定行业和功能；必须能从项目证据或用户补充中解释来源。",
-            f"main_functions 写 500~1300 字长版（供操作手册和长版表单使用）；main_functions_short 写 ≤{MAIN_FUNCTION_SHORT_LIMIT} 字的官网短版，可留空由脚本压缩长版生成。",
+            f"main_functions 写 {MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字长版（官网主要功能默认就填它，供操作手册和长版表单使用）；main_functions_short 写 ≤{MAIN_FUNCTION_SHORT_LIMIT} 字的官网短版，可留空，留空时脚本按业务理解另写一段短文本（不是截断长版）。",
             "technical_characteristics 必须是官网标签数组，可选标签：" + "、".join(TECHNICAL_CHARACTERISTIC_TAGS) + "；不要写自由文本。",
+            f"technical_characteristics_note 写 ≤{TECHNICAL_CHARACTERISTIC_LIMIT} 字的技术特点说明（官网注：所列标签不计入这 100 个字符，写成说明后由脚本拼成「标签；说明」）；说明写软件的技术能力，不要写框架/技术栈名称。",
         ],
     }
     write_json(path, template)
@@ -331,6 +335,25 @@ def required_technical_tags(value: Any) -> str:
     return "、".join(dict.fromkeys(tags))
 
 
+def optional_technical_note(value: Any) -> str:
+    """技术特点说明（≤100 字，标签不计入），说明里不写框架/技术栈名称。"""
+    note = str(value or "").strip()
+    if not note:
+        return ""
+    if effective_len(note) > TECHNICAL_CHARACTERISTIC_LIMIT:
+        raise SystemExit(
+            "Model context field technical_characteristics_note must stay within "
+            f"{TECHNICAL_CHARACTERISTIC_LIMIT} characters; got {effective_len(note)}"
+        )
+    stack = [keyword for keyword in TECHNICAL_CHARACTERISTIC_STACK_KEYWORDS if keyword in note.lower()]
+    if stack:
+        raise SystemExit(
+            "Model context field technical_characteristics_note must describe the software's "
+            "technical characteristics, not implementation stacks; found: " + "、".join(stack)
+        )
+    return note
+
+
 def effective_len(value: str) -> int:
     return len(re.sub(r"\s+", "", value))
 
@@ -340,6 +363,7 @@ def normalize_model_context(model: dict[str, Any], evidence: dict[str, Any], web
     application_purpose = required_text(model, "application_purpose")
     main_functions = required_text(model, "main_functions")
     technical_characteristics = required_technical_tags(model.get("technical_characteristics"))
+    technical_characteristics_note = optional_technical_note(model.get("technical_characteristics_note"))
     main_functions_short = str(model.get("main_functions_short") or "").strip()
     if len(industry) > 50:
         raise SystemExit("Model context field exceeds 50 characters: industry")
@@ -418,6 +442,7 @@ def normalize_model_context(model: dict[str, Any], evidence: dict[str, Any], web
         "main_functions": main_functions,
         "main_functions_short": main_functions_short,
         "technical_characteristics": technical_characteristics,
+        "technical_characteristics_note": technical_characteristics_note,
         "software_technical_option": str(model.get("software_technical_option") or "应用软件"),
         "software_category": str(model.get("software_category") or "应用软件"),
         "manual_sections": sections,
@@ -491,9 +516,10 @@ def write_context_md(path: Path, context: dict[str, Any]) -> None:
             "## 申请表建议口径",
             "",
             f"- 开发目的：{context['application_purpose']}",
-            f"- 软件的主要功能（短版，官网字段，≤{MAIN_FUNCTION_SHORT_LIMIT}字）：{context.get('main_functions_short') or '未单独提供，由脚本从长版压缩生成'}",
+            f"- 软件的主要功能（短版，官网字段，≤{MAIN_FUNCTION_SHORT_LIMIT}字）：{context.get('main_functions_short') or '未单独提供，由脚本按业务理解生成短文本'}",
             f"- 软件的主要功能（详细版备用，{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX}字）：{context['main_functions']}",
             f"- 技术特点标签：{context['technical_characteristics']}",
+            f"- 技术特点说明（≤{TECHNICAL_CHARACTERISTIC_LIMIT}字，标签不计入）：{context.get('technical_characteristics_note') or '未提供，技术特点只写标签'}",
             f"- 软件的技术特点选项：{context['software_technical_option']}",
             f"- 软件分类：{context['software_category']}",
             "",
