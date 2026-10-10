@@ -32,6 +32,7 @@ from common import (
 from officecli_backend import OfficeCli, OfficeCliError, issue_count, json_data, structural_error_count
 import code_layout
 import count_manual_words
+import workdir_lock
 
 
 DRAWINGML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -738,6 +739,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Explicitly accept the risk of building with an OfficeCLI version other than the verified one",
     )
     parser.add_argument("--skip-preview", action="store_true")
+    parser.add_argument(
+        "--allow-long-manual",
+        action="store_true",
+        help="Allow an operation manual that exceeds the 10,000-word budget",
+    )
+    parser.add_argument(
+        "--ignore-lock",
+        action="store_true",
+        help="Ignore another run holding the workdir lock (only when it is known to be stale)",
+    )
     return parser
 
 
@@ -752,8 +763,9 @@ def main() -> None:
             print(f"- {issue}")
         raise SystemExit(2)
     try:
-        result = build_all(workdir, args.software_name, args.version, args.skip_preview,
-                           args.allow_untested_officecli)
+        with workdir_lock.hold(workdir, "build_docx_from_md.py", force=args.ignore_lock):
+            result = build_all(workdir, args.software_name, args.version, args.skip_preview,
+                               args.allow_untested_officecli, args.allow_long_manual)
     except (OfficeCliError, ValueError) as exc:
         raise SystemExit(f"DOCX_BUILD_FAILED\n{exc}") from exc
     print(f"OK final materials: {workdir / '正式资料'}")

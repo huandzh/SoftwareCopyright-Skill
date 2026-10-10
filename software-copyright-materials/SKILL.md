@@ -84,6 +84,24 @@ metadata:
 - `screenshot-method`：操作手册截图前，用户必须在 Playwright CLI 自动截图、用户自行截图两种方式中选择一种；如果用户明确说“现在不截图/先跳过截图”，记录为 `skip`。
 - `markdown`：全部 Markdown 草稿完成后，用户必须确认可以进入 Word/TXT 生成。
 
+★ **改完内容先看门禁状态，不要靠报错反推**：任何草稿改动都会让对应门禁的内容指纹失效，重新记录前先运行
+
+```bash
+<PYTHON> "<SKILL_DIR>/scripts/confirm_stage.py" --workdir 软件著作权申请资料 --status
+```
+
+它会列出每个门禁是「有效 / 已失效 / 未记录」、**哪一个文件变了**，以及该跑哪条重记命令（`environment`、`project` 是可选门禁，未记录不阻塞）。改动与门禁的对应关系：
+
+| 改了什么 | 失效的门禁 |
+| --- | --- |
+| 软件全称 / 简称 / 版本号 | `software-name` + 之后所有门禁 |
+| `草稿/业务理解.md`、`草稿/业务理解.json` | `business` + `markdown` |
+| `草稿/代码文件选择.json` | `code-selection` + `markdown` |
+| 重新抽取代码材料（`代码-前N页.md`、`代码提取清单.*`） | `markdown` |
+| `草稿/申请表信息.md`（含用 `--refresh-summary` 刷新摘要） | `application-fields` + `markdown` |
+| `草稿/操作手册.md`、操作手册自检记录 | `markdown` |
+| `截图/截图清单.json` 或截图图片 | `markdown` |
+
 ## 工作流
 
 ### 1. 启动环境检查

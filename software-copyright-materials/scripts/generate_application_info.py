@@ -727,6 +727,52 @@ def infer_runtime_support(analysis: dict[str, Any], project: Path) -> str:
     return result
 
 
+def summary_lines(analysis: dict[str, Any], manifest: dict[str, Any],
+                  business: dict[str, Any] | None = None) -> list[str]:
+    """The「项目分析摘要」bullet lines, shared by draft writing and summary refresh."""
+    return [
+        f"- 项目目录：{analysis.get('project_root', '')}",
+        f"- 框架：{'、'.join(analysis.get('frameworks') or []) or '未识别'}",
+        f"- 源码文件数：{analysis.get('source', {}).get('total_file_count', analysis.get('source', {}).get('file_count', 0))}",
+        f"- 源程序量（含空行）：{analysis.get('source', {}).get('total_line_count', analysis.get('source', {}).get('line_count', 0))}",
+        f"- 已选源码估算总页数：{manifest.get('total_pages', 0)}（每页 {manifest.get('lines_per_page', 0)} 个物理行）",
+        f"- 实际提交代码材料页数：{submitted_code_page_count(manifest)}",
+        f"- 代码输出模式：{manifest.get('mode', '')}",
+        f"- 代码材料前后页数：前 {manifest.get('slice_pages', '未记录')} 页 + 后 {manifest.get('slice_pages', '未记录')} 页",
+        f"- 代码注释处理：{comment_stripping_note(manifest)}",
+        f"- 业务理解：{'已读取 草稿/业务理解.json' if business else '未提供，使用项目分析兜底'}",
+    ]
+
+
+def refresh_summary(path: Path, analysis: dict[str, Any], manifest: dict[str, Any],
+                    business: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Rewrite only the「项目分析摘要」section of an existing 申请表信息.md.
+
+    重抽代码只改变摘要里的页数与注释口径，用户确认过的登记字段不应被覆盖，
+    所以刷新摘要不能重新生成整份草稿（那会把字段打回「待用户确认」）。
+    """
+    if not path.is_file():
+        raise SystemExit(f"刷新摘要失败：找不到 {path}")
+    lines = path.read_text(encoding="utf-8").split("\n")
+    start = next((index for index, line in enumerate(lines) if line.strip() == "## 项目分析摘要"), None)
+    if start is None:
+        raise SystemExit(f"{path} 里找不到「## 项目分析摘要」小节，无法刷新")
+    end = next(
+        (index for index in range(start + 1, len(lines)) if lines[index].startswith("## ")),
+        len(lines),
+    )
+    old_block = lines[start:end]
+    new_block = ["## 项目分析摘要", "", *summary_lines(analysis, manifest, business), ""]
+    updated = lines[:start] + new_block + lines[end:]
+    changed = [line for line in new_block if line not in old_block]
+    path.write_text("\n".join(updated), encoding="utf-8")
+    return {
+        "file": str(path),
+        "changed_lines": changed,
+        "gates_to_reconfirm": ["application-fields", "markdown"],
+    }
+
+
 def write_application_md(path: Path, fields: dict[str, str], analysis: dict[str, Any], manifest: dict[str, Any], business: dict[str, Any] | None = None) -> None:
     # 兜底：未发表时首次发表日期不应输出"待用户确认"，直接留空
     publish_status = fields.get("发表状态", "")
@@ -852,16 +898,7 @@ def write_application_md(path: Path, fields: dict[str, str], analysis: dict[str,
             "",
             "## 项目分析摘要",
             "",
-            f"- 项目目录：{analysis.get('project_root', '')}",
-            f"- 框架：{'、'.join(analysis.get('frameworks') or []) or '未识别'}",
-            f"- 源码文件数：{analysis.get('source', {}).get('total_file_count', analysis.get('source', {}).get('file_count', 0))}",
-            f"- 源程序量（含空行）：{analysis.get('source', {}).get('total_line_count', analysis.get('source', {}).get('line_count', 0))}",
-            f"- 已选源码估算总页数：{manifest.get('total_pages', 0)}",
-            f"- 实际提交代码材料页数：{submitted_code_page_count(manifest)}",
-            f"- 代码输出模式：{manifest.get('mode', '')}",
-            f"- 代码材料前后页数：前 {manifest.get('slice_pages', '未记录')} 页 + 后 {manifest.get('slice_pages', '未记录')} 页",
-            f"- 代码注释处理：{comment_stripping_note(manifest)}",
-            f"- 业务理解：{'已读取 草稿/业务理解.json' if business else '未提供，使用项目分析兜底'}",
+            *summary_lines(analysis, manifest, business),
             "",
             "## 待确认字段",
             "",
@@ -911,15 +948,41 @@ def main() -> None:
     parser.add_argument("--answers", help="Optional JSON object with confirmed field values")
     parser.add_argument("--business-context", help="Business context JSON generated before material drafting")
     parser.add_argument("--out-dir", default="软件著作权申请资料/草稿")
+    parser.add_argument(
+        "--refresh-summary",
+        action="store_true",
+        help="只刷新 草稿/申请表信息.md 的「项目分析摘要」，不改动已确认字段",
+    )
+    parser.add_argument(
+        "--application-md",
+        help="配合 --refresh-summary 指定要刷新的申请表草稿（默认 <out-dir>/申请表信息.md）",
+    )
     args = parser.parse_args()
 
     analysis = read_json(Path(args.analysis))
     manifest = read_json(Path(args.code_manifest))
     answers = read_json(Path(args.answers)) if args.answers else {}
     business = read_json(Path(args.business_context)) if args.business_context else None
-    require_confirmed_business(business)
     out_dir = ensure_dir(Path(args.out_dir))
 
+    if args.refresh_summary:
+        target = Path(args.application_md) if args.application_md else out_dir / "申请表信息.md"
+        result = refresh_summary(target, analysis, manifest, business)
+        print(f"OK refreshed summary: {result['file']}")
+        if result["changed_lines"]:
+            print("变更行：")
+            for line in result["changed_lines"]:
+                print(f"  {line}")
+        else:
+            print("摘要无变化。")
+        print("需要重记的门禁：" + "、".join(result["gates_to_reconfirm"]))
+        print(
+            "NEXT_ACTION: 请运行 `confirm_stage.py --stage application-fields`，"
+            "再运行 `confirm_stage.py --stage markdown`（`--status` 可以先看当前状态）。"
+        )
+        return
+
+    require_confirmed_business(business)
     fields = build_fields(analysis, manifest, args.software_name, args.version, answers, business)
     out_path = out_dir / "申请表信息.md"
     write_application_md(out_path, fields, analysis, manifest, business)

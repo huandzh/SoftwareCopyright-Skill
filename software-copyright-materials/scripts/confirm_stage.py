@@ -7,6 +7,7 @@ import argparse
 from datetime import datetime, timezone
 from pathlib import Path
 import re
+import sys
 from typing import Any
 
 from common import (
@@ -430,12 +431,150 @@ def confirm_markdown(workdir: Path, note: str) -> Path:
     return out_path
 
 
+GATE_LABELS = {
+    "environment": ("环境确认.json", "环境检查与 OfficeCLI 口径"),
+    "project": ("项目确认.json", "项目目录选择"),
+    "software-name": (IDENTITY_FILE_NAME, "软件全称 / 简称 / 版本号"),
+    "business": ("草稿/业务理解.json", "业务理解"),
+    "code-selection": ("草稿/代码文件选择.json", "代码文件选择"),
+    "screenshot-method": ("截图方式确认.json", "截图方式"),
+    "application-fields": ("草稿/申请表字段确认.json", "申请表字段"),
+    "markdown": ("草稿/最终生成确认.json", "Markdown 最终确认"),
+}
+
+GATE_OPTIONAL = {"environment", "project"}
+
+GATE_FLAGS = {
+    "environment": '--stage environment --note "<用户确认内容>"',
+    "project": '--stage project --note "<用户确认内容>"',
+    "software-name": '--stage software-name --software-name "<软件全称>" --version "<版本号>" [--short-name "<简称>"]',
+    "business": '--stage business --note "<用户确认内容>"',
+    "code-selection": '--stage code-selection --note "<用户确认内容>"',
+    "screenshot-method": '--stage screenshot-method --method <playwright-cli|user-supplied|skip> --note "<用户选择>"',
+    "application-fields": '--stage application-fields --note "<用户确认内容>"',
+    "markdown": '--stage markdown --note "<用户确认内容>"',
+}
+
+
+def _changed_entries(recorded: dict[str, str], current: dict[str, str]) -> list[str]:
+    """List drafts whose content fingerprint changed since the gate was recorded."""
+    changes: list[str] = []
+    for key in sorted(set(recorded) | set(current)):
+        before = recorded.get(key)
+        after = current.get(key)
+        if before == after:
+            continue
+        if before is None:
+            changes.append(f"新增 {key}")
+        elif after is None:
+            changes.append(f"删除 {key}")
+        else:
+            changes.append(f"修改 {key}")
+    return changes
+
+
+def gate_status(workdir: Path) -> list[dict[str, Any]]:
+    """Describe every gate: confirmed / missing / stale, with the reason and the fix.
+
+    内容一改就要重记门禁，而重记哪几个是靠报错反推的 —— 这个视图把「改了什么 →
+    哪个门禁失效 → 该跑哪条命令」直接列出来，省掉一轮试错。
+    """
+    rows: list[dict[str, Any]] = []
+    draft_snapshot_now = draft_snapshot(workdir)
+    for stage, (relative, label) in GATE_LABELS.items():
+        path = workdir / relative
+        row: dict[str, Any] = {
+            "stage": stage,
+            "label": label,
+            "file": str(relative),
+            "optional": stage in GATE_OPTIONAL,
+            "command": f'python <SKILL_DIR>/scripts/confirm_stage.py --workdir {workdir} {GATE_FLAGS[stage]}',
+            "state": "missing",
+            "reasons": [],
+        }
+        if not path.is_file():
+            row["reasons"].append("确认文件不存在")
+            rows.append(row)
+            continue
+        try:
+            data = read_json(path)
+        except Exception as exc:  # noqa: BLE001 - 报告用，任何读取失败都要说清楚
+            row["state"] = "unreadable"
+            row["reasons"].append(f"无法读取：{exc}")
+            rows.append(row)
+            continue
+        if not data.get("user_confirmed") and not data.get("software_name_confirmed") \
+                and not data.get("screenshot_method_confirmed") \
+                and not data.get("application_fields_confirmed") \
+                and not data.get("markdown_confirmed") \
+                and not data.get("environment_confirmed") \
+                and not data.get("project_confirmed"):
+            row["reasons"].append("尚未确认")
+            rows.append(row)
+            continue
+        if not confirmation_is_current(data):
+            row["state"] = "stale"
+            row["reasons"].append("确认内容指纹已失效（确认后又被改过）")
+            rows.append(row)
+            continue
+        row["state"] = "ok"
+        if stage == "markdown":
+            changes = _changed_entries(data.get("draft_file_sha256") or {}, draft_snapshot_now)
+            if changes:
+                row["state"] = "stale"
+                row["reasons"].append("确认后以下草稿发生变化：" + "；".join(changes[:8]))
+        elif stage == "application-fields":
+            recorded = str(data.get("application_md_sha256") or "")
+            app_md = workdir / "草稿/申请表信息.md"
+            current = file_sha256(app_md) if app_md.is_file() else ""
+            if recorded != current:
+                row["state"] = "stale"
+                row["reasons"].append("草稿/申请表信息.md 在确认后已修改")
+        rows.append(row)
+
+    # markdown 是最容易连带失效的门禁：即使指纹还对，也要顺带报出其它阻塞项
+    if all(row["state"] == "ok" for row in rows if row["stage"] == "markdown"):
+        blockers = draft_completeness_issues(workdir)
+        for row in rows:
+            if row["stage"] == "markdown" and blockers:
+                row["state"] = "blocked"
+                row["reasons"].extend(blockers[:5])
+    return rows
+
+
+def print_gate_status(workdir: Path) -> int:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+        except (AttributeError, ValueError):
+            pass
+    rows = gate_status(workdir)
+    print(f"# 门禁状态：{workdir}")
+    stale = [
+        row for row in rows
+        if row["state"] in {"stale", "missing", "unreadable", "blocked"} and not row.get("optional")
+    ]
+    for row in rows:
+        icon = {"ok": "✅", "stale": "⚠️", "missing": "—", "unreadable": "✖", "blocked": "⛔"}[row["state"]]
+        suffix = "（可选，未记录不影响生成）" if row.get("optional") and row["state"] != "ok" else ""
+        print(f"{icon} {row['stage']}（{row['label']}）{suffix}")
+        for reason in row["reasons"]:
+            print(f"    - {reason}")
+        if row["state"] != "ok" and not row.get("optional"):
+            print(f"    重记：{row['command']}")
+    if not stale:
+        print("\n所有门禁当前有效，可以直接生成正式资料。")
+    else:
+        print(f"\n有 {len(stale)} 个门禁需要处理：{', '.join(row['stage'] for row in stale)}")
+    return 0 if not stale else 1
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--workdir", default="软件著作权申请资料")
     parser.add_argument(
         "--stage",
-        required=True,
+        required=False,
         choices=[
             "environment",
             "project",
@@ -449,6 +588,11 @@ def main() -> None:
     )
     parser.add_argument("--note", default="用户已确认")
     parser.add_argument(
+        "--status",
+        action="store_true",
+        help="只打印每个门禁的当前状态、失效原因与重记命令，不做任何写入",
+    )
+    parser.add_argument(
         "--method",
         choices=sorted(SCREENSHOT_METHODS),
         help="Screenshot capture method when --stage screenshot-method",
@@ -459,6 +603,13 @@ def main() -> None:
     args = parser.parse_args()
 
     workdir = Path(args.workdir)
+    if args.status:
+        raise SystemExit(print_gate_status(workdir))
+    if not args.stage:
+        raise SystemExit(
+            "STOP_FOR_USER\n"
+            "NEXT_ACTION: 需要 --stage <门禁名> 才能记录确认；只想查看门禁状态时用 --status。"
+        )
     if args.stage == "environment":
         path = confirm_environment(workdir, args.note)
     elif args.stage == "project":

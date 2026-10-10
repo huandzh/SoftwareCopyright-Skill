@@ -25,6 +25,7 @@ from common import (
     write_json,
 )
 from code_comments import StripResult, strip_source_comments
+import workdir_lock
 
 
 # Used only to estimate how much source is needed for the first/last N-page sets.
@@ -435,6 +436,11 @@ def main() -> None:
         help="Keep source comments instead of removing them from the code material",
     )
     parser.add_argument("--selection", help="Editable JSON file created by propose_code_selection.py")
+    parser.add_argument(
+        "--ignore-lock",
+        action="store_true",
+        help="Ignore another run holding the workdir lock (only when it is known to be stale)",
+    )
     args = parser.parse_args()
 
     project = Path(args.project)
@@ -447,16 +453,17 @@ def main() -> None:
     if selection and not selection.exists():
         raise SystemExit(f"Selection JSON not found: {selection}")
 
-    manifest = extract(
-        project,
-        Path(args.out_dir),
-        args.software_name,
-        args.version,
-        args.lines_per_page,
-        selection,
-        slice_pages=args.slice_pages,
-        keep_comments=args.keep_comments,
-    )
+    with workdir_lock.hold(Path(args.out_dir).parent, "extract_code_material.py", force=args.ignore_lock):
+        manifest = extract(
+            project,
+            Path(args.out_dir),
+            args.software_name,
+            args.version,
+            args.lines_per_page,
+            selection,
+            slice_pages=args.slice_pages,
+            keep_comments=args.keep_comments,
+        )
     print(f"OK code drafts: {args.out_dir}")
     print(f"Selected files: {manifest['file_count']}")
     print(f"Mode: {manifest['mode']}")

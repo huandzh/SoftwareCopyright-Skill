@@ -39,6 +39,36 @@ irm https://raw.githubusercontent.com/iOfficeAI/OfficeCLI/main/install.ps1 | iex
 - 代码材料不使用 Word 自动行号。抽取脚本先按最多 90 显示列折行（全角字符按 2 列），正文使用 8pt 字号和 13pt 固定行距，并按每页 **56 个物理行**（该版式 A4 + 1.8cm 页边距的真实容量：26.1cm = 739.8pt ÷ 13pt = 56.9）对齐前后 N 页的选材量（默认 `N = 40`，可用 `--slice-pages 30` 切换）。★ 这个值不能取保守估计：切片按页边界切，估小了不会少页，但最后页会几乎空白（实测 2026-10-10 按 55 行/页选材，40 页文档的第 40 页只有 16 行，违反“程序每页不少于 50 行”）。抽取阶段默认移除全部注释（整行删除、行尾截掉、Python 文档字符串整段删除，普通字符串与 URL 保留），清单记录每个文件移除的注释数量。每个物理行写成一个固定行距段落，所有段落连续流入正文，不设置 `pageBreakBefore`；Word 根据页面可用高度自动换页，OfficeCLI 再读取真实页数。
 - 正式生成只读取当前 `代码提取清单.json` 的 `outputs`，并按 `slice_pages` 推导代码 DOCX 文件名。重新抽取或生成时清理同一软件名下与当前模式冲突的旧代码草稿和旧代码 DOCX（含 30 页与 40 页两套），避免“前后 40 页”“前后 30 页”和“全部代码”同时残留。
 
+## Word 占用与残留实例（★ 实测踩过）
+
+OfficeCLI 取页数、Word COM 取每页行数都会拉起隐藏的 `WINWORD.exe`；它**可能残留**并占住交付文件，表现为下一次操作报「Word 无法保存此文件，因为它已在别处打开」。处置约定：
+
+1. **一切复核都在副本上做**。`word_docx_probe.ps1`、`fill_application_form.ps1` 都先 `Copy-Item` 再 `Documents.Open`，交付文件本身不打开、不写入（Word 会顺带改字段缓存与时间戳，实测交付 docx 的字节数因此与报告记录不一致）。
+2. **清理只清自己新建的实例**：记录调用前的 `WINWORD` pid 列表，结束时只 `Stop-Process` 「不在 baseline 且没有窗口标题」的那些。用户可见的 Word 一律不碰——它可能开着别的文档。
+3. **交付文件被占用时不要硬写**：提示用户关闭，或另存为新文件名，并在报告里说明；不要为了写入而结束用户的 Word。
+4. **`预览未生成` 不是结构失败**：无头浏览器（crashpad）偶发不可用，重试一次仍失败就记进生成报告即可，不要因此判定材料不合格。
+5. **报告里的文件大小以最后一次 `stat` 为准**：生成流程结束后 OfficeCLI/Word 仍可能回写 docx，报告中的字节数只作参考。
+
+## 两道 Word 侧复核
+
+OfficeCLI 只回答「总页数」，回答不了「每页是不是都填满了」；中文「字数」也只有 Word 给得出。所以生成脚本额外调用两个探针（同一份 PowerShell 后端 `word_docx_probe.ps1`）：
+
+| 脚本 | 作用 | 失败处理 |
+| --- | --- | --- |
+| `code_layout.py --docx <代码docx> --mode layout --expected-pages 40` | 逐页读物理行数，断言「总页数 == 文件名页数」且「每页 ≥50 行」 | 生成失败，要求重新校准选材量 |
+| `count_manual_words.py --docx <操作手册docx>` | 读 Word 实测字数，上限 1 万字 | 生成失败（确有需要时加 `--allow-long-manual`） |
+
+两个脚本在非 Windows / 没有 PowerShell / 没装 Word 时返回 `available: false` 与原因，由调用方写进生成报告，**不静默通过**。
+
+## 工作目录锁
+
+抽取与生成都会写 `草稿/.workdir.lock`（pid + 主机 + 开始时间 + 命令行）。发现锁的主人仍在运行时直接停止，避免两个会话互相覆盖材料（实测：另一个会话在同一 workdir 重跑构建，复核期间文件被重写、报告字节数与磁盘不一致）。查看与清理：
+
+```bash
+<PYTHON> "<SKILL_DIR>/scripts/workdir_lock.py" --workdir 软件著作权申请资料 --status
+<PYTHON> "<SKILL_DIR>/scripts/workdir_lock.py" --workdir 软件著作权申请资料 --clear
+```
+
 ## 校验策略
 
 1. `officecli validate <file> --json`：OpenXML 结构错误必须为 0，否则生成失败。
