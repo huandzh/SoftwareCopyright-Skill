@@ -333,8 +333,24 @@ def extract(
     outputs: list[str] = []
 
     if total_pages >= threshold:
-        front = list(enumerate(pages[:slice_pages], start=1))
-        back = [(slice_pages + 1 + i, page) for i, page in enumerate(pages[-slice_pages:])]
+        # Slice by physical lines instead of pre-cut page groups. The material's
+        # last group is usually partial, so cutting ``pages[-slice_pages:]``
+        # hands Word a short tail page: measured 2026-10-10, a 55-line slice set
+        # ended with a 44-line group and produced a 40-page document whose last
+        # page held only 5 lines. Both halves must carry exactly
+        # ``slice_pages * lines_per_page`` lines so every page, last page
+        # included, is full.
+        page_size = slice_pages * lines_per_page
+        front_lines = code_lines[:page_size]
+        back_lines = code_lines[-page_size:]
+        front = [
+            (index + 1, page)
+            for index, page in enumerate(paginate(front_lines, lines_per_page))
+        ]
+        back = [
+            (slice_pages + 1 + index, page)
+            for index, page in enumerate(paginate(back_lines, lines_per_page))
+        ]
         front_name, back_name = code_split_draft_names(slice_pages)
         front_path = out_dir / front_name
         back_path = out_dir / back_name

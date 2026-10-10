@@ -91,7 +91,9 @@ class OfficeCliBuilderTests(unittest.TestCase):
         self.assertTrue(all(command["props"]["font"] == CODE_FONT_NAME for command in commands))
         self.assertTrue(all(command["props"]["size"] == CODE_FONT_SIZE for command in commands))
         self.assertTrue(all(command["props"]["lineSpacing"] == CODE_LINE_SPACING for command in commands))
-        self.assertEqual(CODE_LINES_PER_PAGE, 55)
+        # Must match the real page capacity (A4 + 1.8cm margins + 13pt exact
+        # spacing => 56 lines); a smaller value leaves the last page empty.
+        self.assertEqual(CODE_LINES_PER_PAGE, 56)
         self.assertEqual(CODE_MAX_COLUMNS, 90)
 
     def test_parse_code_pages_preserves_page_numbers(self) -> None:

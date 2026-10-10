@@ -260,10 +260,21 @@ MAX_SOURCE_FILE_BYTES = 800_000
 
 # Shared code-document layout. The extractor uses the physical-line estimate
 # only to choose enough material; Word still performs the final pagination.
+#
+# CODE_LINES_PER_PAGE must equal the real page capacity of this layout, not a
+# conservative guess. The slices are cut at page boundaries, so an estimate
+# below the capacity leaves the LAST page of every code document nearly empty:
+# measured 2026-10-10 on this project, 55-line slices produced a 40-page
+# document whose page 40 carried only 16 lines (below the ">= 50 lines per
+# page" rule for program listings).
+# Capacity of A4 + 1.8cm margins + 13pt exact line spacing:
+#   usable height = 29.7cm - 2 * 1.8cm = 26.1cm = 739.8pt
+#   739.8pt / 13pt = 56.9 -> 56 lines per page (confirmed by Word repagination:
+#   every page of a 2240-paragraph document holds exactly 56 lines).
 CODE_FONT_NAME = "Consolas"
 CODE_FONT_SIZE = "8pt"
 CODE_LINE_SPACING = "13pt"
-CODE_LINES_PER_PAGE = 55
+CODE_LINES_PER_PAGE = 56
 CODE_MAX_COLUMNS = 90
 
 # Code material is submitted as the first N and the last N pages. The default

@@ -51,6 +51,25 @@ class CodeSliceTests(unittest.TestCase):
         )
         return selection
 
+    @staticmethod
+    def parse_page_groups(text: str) -> list[list[str]]:
+        """Return the physical code lines of every `## 第 N 页` group."""
+        groups: list[list[str]] = []
+        current: list[str] | None = None
+        in_fence = False
+        for raw in text.splitlines():
+            if raw.startswith("## 第"):
+                current = []
+                groups.append(current)
+                in_fence = False
+                continue
+            if raw.strip().startswith("```"):
+                in_fence = not in_fence
+                continue
+            if current is not None and in_fence:
+                current.append(raw)
+        return groups
+
     def test_default_slice_is_forty_pages_per_half(self) -> None:
         self.assertEqual(CODE_SLICE_PAGES_DEFAULT, 40)
         self.assertEqual(CODE_SLICE_PAGE_CHOICES, (30, 40))
@@ -70,6 +89,21 @@ class CodeSliceTests(unittest.TestCase):
         self.assertIn("## 第 40 页", front)
         self.assertNotIn("## 第 41 页", front)
         self.assertIn("## 第 41 页", back)
+
+    def test_slices_carry_full_pages_even_when_material_tail_is_partial(self) -> None:
+        # 6001 material lines are 109 full 55-line pages plus a 6-line tail.
+        # Slicing the back half by page groups would end with that 6-line group
+        # and Word would leave the last page almost empty.
+        self.write_source(6000)
+        selection = self.write_selection()
+
+        manifest = extract(self.project, self.out_dir, "示例软件", "V1.0", 55, selection)
+
+        self.assertNotEqual(manifest["material_line_count"] % 55, 0)
+        for name in manifest["outputs"]:
+            groups = self.parse_page_groups((self.out_dir / name).read_text(encoding="utf-8"))
+            self.assertEqual(len(groups), 40, name)
+            self.assertTrue(all(len(group) == 55 for group in groups), name)
 
     def test_thirty_page_mode_replaces_stale_forty_page_drafts(self) -> None:
         self.write_source(4000)
