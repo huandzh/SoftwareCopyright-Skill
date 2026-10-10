@@ -101,7 +101,7 @@ def all_candidate_lines(candidates: list[dict[str, Any]]) -> int:
 def write_selection_md(path: Path, data: dict[str, Any]) -> None:
     slice_pages = data["slice_pages"]
     comment_note = (
-        "代码材料会移除全部注释（整行注释删除、行尾注释截掉，字符串内的 // 和 # 保留）。"
+        "代码材料会移除全部注释（整行注释删除、行尾注释截掉、Python 文档字符串整段删除，普通字符串内的 // 和 # 保留）。"
         if data["comment_stripping"]
         else "按参数保留源码注释。"
     )

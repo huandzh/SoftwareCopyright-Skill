@@ -184,6 +184,8 @@ def collect_code_lines(
         "enabled": not keep_comments,
         "comment_only_lines": 0,
         "inline_comment_lines": 0,
+        "docstring_lines": 0,
+        "docstring_strip_failed_files": [],
         "unsupported_files": [],
     }
 
@@ -203,6 +205,9 @@ def collect_code_lines(
             if stripped.supported:
                 comment_stats["comment_only_lines"] += stripped.comment_only_lines
                 comment_stats["inline_comment_lines"] += stripped.inline_comment_lines
+                comment_stats["docstring_lines"] += stripped.docstring_lines
+                if stripped.docstring_strip_failed:
+                    comment_stats["docstring_strip_failed_files"].append(rel(path, project))
             else:
                 comment_stats["unsupported_files"].append(rel(path, project))
         text = stripped.text
@@ -224,6 +229,7 @@ def collect_code_lines(
                 "blank_line_count": len(source_lines) - len(selected_source_lines),
                 "comment_only_line_count": stripped.comment_only_lines,
                 "inline_comment_line_count": stripped.inline_comment_lines,
+                "docstring_line_count": stripped.docstring_lines,
                 "comment_stripping_supported": stripped.supported,
                 "selected_line_start": 1,
                 "selected_line_end": source_end_line,
@@ -234,6 +240,7 @@ def collect_code_lines(
             }
         )
     comment_stats["unsupported_files"] = sorted(set(comment_stats["unsupported_files"]))
+    comment_stats["docstring_strip_failed_files"] = sorted(set(comment_stats["docstring_strip_failed_files"]))
     return all_lines, manifest_files, comment_stats
 
 
@@ -255,11 +262,18 @@ def write_manifest_md(path: Path, manifest: dict[str, Any]) -> None:
     if comments.get("enabled"):
         comment_note = (
             f"已移除整行注释 {comments.get('comment_only_lines', 0)} 行、"
-            f"行尾注释 {comments.get('inline_comment_lines', 0)} 处（字符串内容保留）"
+            f"文档字符串/独立字符串语句 {comments.get('docstring_lines', 0)} 行、"
+            f"行尾注释 {comments.get('inline_comment_lines', 0)} 处（普通字符串内容保留）"
         )
         unsupported = comments.get("unsupported_files") or []
         if unsupported:
             comment_note += f"；{len(unsupported)} 个文件语言语法未知，未改动：" + "、".join(unsupported[:5])
+        parse_failed = comments.get("docstring_strip_failed_files") or []
+        if parse_failed:
+            comment_note += (
+                f"；★ {len(parse_failed)} 个 Python 文件语法解析失败，只能保证 # 注释被移除，"
+                "文档字符串需人工复核：" + "、".join(parse_failed[:5])
+            )
     else:
         comment_note = "按参数保留源码注释"
     lines = [
@@ -284,13 +298,14 @@ def write_manifest_md(path: Path, manifest: dict[str, Any]) -> None:
         "",
         "## 文件来源",
         "",
-        "| 文件 | 源码行数 | 移除整行注释 | 移除行尾注释 | 抽取源码范围 | 抽取源码行数 | 材料物理行数 | 材料行范围 |",
-        "| --- | ---: | ---: | ---: | --- | ---: | ---: | --- |",
+        "| 文件 | 源码行数 | 移除整行注释 | 移除文档字符串 | 移除行尾注释 | 抽取源码范围 | 抽取源码行数 | 材料物理行数 | 材料行范围 |",
+        "| --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |",
     ]
     for item in manifest["files"]:
         lines.append(
             f"| `{item['path']}` | {item['source_line_count']} | "
             f"{item['comment_only_line_count']} | "
+            f"{item.get('docstring_line_count', 0)} | "
             f"{item['inline_comment_line_count']} | "
             f"{item['selected_line_start']}-{item['selected_line_end']} | "
             f"{item['selected_line_count']} | "

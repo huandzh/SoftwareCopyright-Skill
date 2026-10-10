@@ -9,12 +9,18 @@ language-aware scanner instead of blind text replacement:
   of the line is kept;
 - comment markers inside string literals, template literals, regex literals and
   URLs such as ``https://example.com`` are preserved;
+- Python docstrings (and any other statement that is only a string literal) are
+  removed as well: a bare triple-quoted string is documentation, and in a
+  printed listing it reads exactly like a comment, so 代码材料 must not keep it.
+  Regular string literals — including triple-quoted strings that are *assigned*
+  to a name — are still preserved;
 - unknown languages are returned unchanged and reported as unsupported so the
   material is never silently rewritten by a guess.
 """
 
 from __future__ import annotations
 
+import ast
 import re
 from dataclasses import dataclass
 
@@ -27,6 +33,10 @@ class StripResult:
     supported: bool
     comment_only_lines: int
     inline_comment_lines: int
+    # 独立字符串语句（Python 文档字符串/块注释）单独计数，方便登记材料说明口径
+    docstring_lines: int = 0
+    # Python 语法解析失败时为 True：此时只能保证 # 注释被移除，文档字符串要靠人工复核
+    docstring_strip_failed: bool = False
 
 
 HASH_SUFFIXES = frozenset({
@@ -54,9 +64,6 @@ HASH_SUFFIXES = frozenset({
     ".properties",
     ".ps1",
     ".psm1",
-    ".py",
-    ".pyi",
-    ".pyw",
     ".r",
     ".sh",
     ".tcl",
@@ -67,6 +74,9 @@ HASH_SUFFIXES = frozenset({
     ".yml",
     ".zsh",
 })
+
+# Python needs its own pass: 三引号字符串 + 独立字符串语句（文档字符串）都要处理。
+PYTHON_SUFFIXES = frozenset({".py", ".pyi", ".pyw"})
 
 JS_SUFFIXES = frozenset({".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".ts", ".tsx"})
 
@@ -161,6 +171,8 @@ def _language(suffix: str) -> str | None:
     suffix = suffix.lower()
     if suffix in MARKUP_SUFFIXES:
         return "markup"
+    if suffix in PYTHON_SUFFIXES:
+        return "python"
     if suffix in HASH_SUFFIXES:
         return "hash"
     if suffix in JS_SUFFIXES:
@@ -445,6 +457,136 @@ def _scan_for_language(text: str, language: str) -> str:
     return text
 
 
+def _python_string_statement_ranges(text: str) -> tuple[list[tuple[int, int, int, int]], bool]:
+    """Return ``(ranges, parsed)`` for every statement that is only a string.
+
+    这些语句在打印出来的代码材料里读起来就是注释（模块/类/函数文档字符串，
+    以及用独立字符串充当块注释的写法），所以整段删除；``x = \"\"\"...\"\"\"``
+    这种真正被使用的字符串不会被算进来（它不是独立的字符串语句）。
+
+    返回的 range 是 ``(起始行, 起始列, 结束行, 结束列)``，行号从 1 开始、
+    列号按字符计（``ast`` 给的是 UTF-8 字节偏移，这里换算过）。
+    """
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError, TypeError, MemoryError):
+        return [], False
+    lines = text.split("\n")
+
+    def char_offset(line_number: int, byte_offset: int) -> int:
+        if not 1 <= line_number <= len(lines):
+            return byte_offset
+        raw = lines[line_number - 1].encode("utf-8")
+        return len(raw[:byte_offset].decode("utf-8", errors="ignore"))
+
+    ranges: list[tuple[int, int, int, int]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Expr):
+            continue
+        value = node.value
+        is_string = (
+            isinstance(value, ast.Constant) and isinstance(value.value, str)
+        ) or isinstance(value, ast.JoinedStr)
+        if not is_string:
+            continue
+        start_line = getattr(value, "lineno", None)
+        end_line = getattr(value, "end_lineno", start_line)
+        start_byte = getattr(value, "col_offset", None)
+        end_byte = getattr(value, "end_col_offset", None)
+        if start_line is None or end_line is None or start_byte is None or end_byte is None:
+            continue
+        ranges.append(
+            (
+                start_line,
+                char_offset(start_line, start_byte),
+                end_line,
+                char_offset(end_line, end_byte),
+            )
+        )
+    return ranges, True
+
+
+def _python_fallback_docstring_ranges(text: str) -> list[tuple[int, int, int, int]]:
+    """Best-effort ranges when the file cannot be parsed by this interpreter.
+
+    只处理「整行以三引号开头、以三引号结束（后面最多跟一个 # 注释）」的写法 ——
+    也就是文档字符串最常见的形态；解析失败的文件会在清单里单独列出，提醒人工复核。
+    """
+    lines = text.split("\n")
+    ranges: list[tuple[int, int, int, int]] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        indent = len(line) - len(line.lstrip())
+        stripped = line.strip()
+        match = re.match(r"^(?:[rRuUbBfF]{0,2})(\"\"\"|''')", stripped)
+        if not match:
+            index += 1
+            continue
+        delimiter = match.group(1)
+        start_col = indent + len(match.group(0)) - len(delimiter)
+        cursor = index
+        search_from = start_col + len(delimiter)
+        closing = -1
+        while cursor < len(lines):
+            position = lines[cursor].find(delimiter, search_from)
+            if position != -1:
+                closing = position
+                break
+            cursor += 1
+            search_from = 0
+        if closing == -1:
+            index += 1
+            continue
+        tail = lines[cursor][closing + len(delimiter) :].strip()
+        if tail and not tail.startswith("#"):
+            index += 1
+            continue
+        ranges.append((index + 1, start_col, cursor + 1, closing + len(delimiter)))
+        index = cursor + 1
+    return ranges
+
+
+def _remove_ranges(text: str, ranges: list[tuple[int, int, int, int]]) -> str:
+    """Remove the given spans while keeping every line break in place."""
+    if not ranges:
+        return text
+    lines = text.split("\n")
+    for start_line, start_col, end_line, end_col in sorted(ranges, reverse=True):
+        if not 1 <= start_line <= len(lines) or not 1 <= end_line <= len(lines):
+            continue
+        if start_line == end_line:
+            line = lines[start_line - 1]
+            lines[start_line - 1] = line[:start_col] + line[end_col:]
+            continue
+        lines[start_line - 1] = lines[start_line - 1][:start_col]
+        for number in range(start_line + 1, end_line):
+            lines[number - 1] = ""
+        lines[end_line - 1] = lines[end_line - 1][end_col:]
+    return "\n".join(lines)
+
+
+def _blanked_line_count(before: str, after: str) -> int:
+    """Number of non-blank lines that the removal turned into blank lines."""
+    return sum(
+        1
+        for old_line, new_line in zip(before.splitlines(), after.splitlines())
+        if old_line.strip() and not new_line.strip()
+    )
+
+
+def _strip_python(text: str) -> tuple[str, int, bool]:
+    """Remove docstrings/block strings and ``#`` comments from Python source."""
+    ranges, parsed = _python_string_statement_ranges(text)
+    if not parsed:
+        ranges = _python_fallback_docstring_ranges(text)
+    without_docstrings = _remove_ranges(text, ranges)
+    docstring_lines = _blanked_line_count(text, without_docstrings)
+    # 三引号识别必须打开：否则文档字符串里的 # 会被当成注释，字符串里的内容会被截断。
+    stripped = _scan(without_docstrings, line_tokens=("#",), triple_quotes=True)
+    return stripped, docstring_lines, not parsed
+
+
 def _count_changes(before: str, after: str) -> tuple[int, int]:
     comment_only = 0
     inline = 0
@@ -470,11 +612,21 @@ def strip_source_comments(text: str, suffix: str) -> StripResult:
             comment_only_lines=0,
             inline_comment_lines=0,
         )
-    stripped = _scan_for_language(text, language)
+    docstring_lines = 0
+    docstring_failed = False
+    if language == "python":
+        stripped, docstring_lines, docstring_failed = _strip_python(text)
+    else:
+        stripped = _scan_for_language(text, language)
     comment_only, inline = _count_changes(text, stripped)
+    if docstring_lines:
+        # 被文档字符串整行吃掉的行已经单独计数，不重复算进「整行注释」
+        comment_only = max(0, comment_only - docstring_lines)
     return StripResult(
         text=stripped,
         supported=True,
         comment_only_lines=comment_only,
         inline_comment_lines=inline,
+        docstring_lines=docstring_lines,
+        docstring_strip_failed=docstring_failed,
     )

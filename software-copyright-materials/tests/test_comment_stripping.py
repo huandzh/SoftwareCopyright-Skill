@@ -52,14 +52,16 @@ class CommentStrippingTests(unittest.TestCase):
         self.assertIn("const ratio = total / count;", stripped)
         self.assertNotIn("real trailing comment", stripped)
 
-    def test_python_comments_are_removed_and_strings_including_docstrings_survive(self) -> None:
+    def test_python_comments_and_docstrings_are_removed_while_strings_survive(self) -> None:
         source = (
             "#!/usr/bin/env python3\n"
-            "\"\"\"Module docstring.\"\"\"\n"
+            '"""Module docstring."""\n'
             "def build():\n"
-            "    marker = \"# not a comment\"  # real comment\n"
+            '    """函数文档字符串。"""\n'
+            '    marker = "# not a comment"  # real comment\n'
             "    # whole line comment\n"
-            "    return marker\n"
+            '    block = """\n    被赋值的三引号字符串\n    """\n'
+            "    return marker + block\n"
         )
 
         stripped = self.strip(source, ".py")
@@ -67,8 +69,33 @@ class CommentStrippingTests(unittest.TestCase):
         self.assertNotIn("whole line comment", stripped)
         self.assertNotIn("real comment", stripped)
         self.assertNotIn("/usr/bin/env", stripped)
-        self.assertIn('"""Module docstring."""', stripped)
+        # 文档字符串在打印稿里就是注释，必须一起删掉
+        self.assertNotIn("Module docstring", stripped)
+        self.assertNotIn("函数文档字符串", stripped)
         self.assertIn('"# not a comment"', stripped)
+        self.assertIn("被赋值的三引号字符串", stripped)
+        self.assertIn("return marker + block", stripped)
+
+    def test_python_docstring_lines_are_counted_separately(self) -> None:
+        source = '"""one\ntwo\nthree"""\nx = 1  # trailing\n'
+
+        result = strip_source_comments(source, ".py")
+
+        self.assertEqual(result.docstring_lines, 3)
+        self.assertEqual(result.comment_only_lines, 0)
+        self.assertEqual(result.inline_comment_lines, 1)
+        self.assertFalse(result.docstring_strip_failed)
+        self.assertNotIn("three", result.text)
+        self.assertIn("x = 1", result.text)
+
+    def test_unparseable_python_still_drops_docstrings_and_reports_it(self) -> None:
+        source = 'def broken(:\n    """docstring"""\n    pass\n'
+
+        result = strip_source_comments(source, ".py")
+
+        self.assertTrue(result.docstring_strip_failed)
+        self.assertNotIn("docstring", result.text)
+        self.assertIn("pass", result.text)
 
     def test_sql_comments_and_escaped_quotes(self) -> None:
         source = (

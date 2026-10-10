@@ -369,11 +369,15 @@ def comment_stripping_note(manifest: dict[str, Any]) -> str:
         return "按参数保留源码注释"
     note = (
         f"已移除整行注释 {comments.get('comment_only_lines', 0)} 行、"
-        f"行尾注释 {comments.get('inline_comment_lines', 0)} 处（字符串内容保留）"
+        f"文档字符串/独立字符串语句 {comments.get('docstring_lines', 0)} 行、"
+        f"行尾注释 {comments.get('inline_comment_lines', 0)} 处（普通字符串内容保留）"
     )
     unsupported = comments.get("unsupported_files") or []
     if unsupported:
         note += f"；{len(unsupported)} 个文件语言语法未知未改动"
+    parse_failed = comments.get("docstring_strip_failed_files") or []
+    if parse_failed:
+        note += f"；{len(parse_failed)} 个 Python 文件语法解析失败，文档字符串需人工复核"
     return note
 
 

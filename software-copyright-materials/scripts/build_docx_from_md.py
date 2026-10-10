@@ -614,8 +614,12 @@ def build_all(workdir: Path, software_name: str, version: str, skip_preview: boo
         if comments.get("enabled"):
             comment_note = (
                 f"已移除整行注释 {comments.get('comment_only_lines', 0)} 行、"
+                f"文档字符串/独立字符串语句 {comments.get('docstring_lines', 0)} 行、"
                 f"行尾注释 {comments.get('inline_comment_lines', 0)} 处"
             )
+            parse_failed = comments.get("docstring_strip_failed_files") or []
+            if parse_failed:
+                comment_note += f"；★ {len(parse_failed)} 个 Python 文件语法解析失败，文档字符串需人工复核"
         else:
             comment_note = "按参数保留源码注释"
         code_mode_note = (
