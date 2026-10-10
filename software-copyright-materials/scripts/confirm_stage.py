@@ -17,6 +17,8 @@ from common import (
     MAIN_FUNCTION_LONG_MIN,
     MAIN_FUNCTION_MODE_FIELD,
     MAIN_FUNCTION_SHORT_LIMIT,
+    TECHNICAL_CHARACTERISTIC_LIMIT,
+    TECHNICAL_CHARACTERISTIC_STACK_KEYWORDS,
     TECHNICAL_CHARACTERISTIC_TAGS,
     confirmation_is_current,
     confirmation_payload_sha256,
@@ -25,15 +27,16 @@ from common import (
     file_sha256,
     identity_issue,
     identity_mismatch_issues,
+    main_function_is_long_mode,
     read_json,
     split_tag_values,
+    split_technical_characteristics,
     write_json,
 )
 
 
 SCREENSHOT_METHODS = {"playwright-cli", "user-supplied", "skip"}
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-MAIN_FUNCTION_LONG_MODE_KEYS = ("长版", "详细", "500", "1300")
 SOFTWARE_NAME_SUFFIXES = ("软件", "平台", "系统", "工具", "程序", "网站", "客户端", "引擎")
 FIELD_LIMITS = {
     "开发的硬件环境": 50,
@@ -44,7 +47,7 @@ FIELD_LIMITS = {
     "软件运行支撑环境 / 支持软件": 50,
     "开发目的": 50,
     "面向领域 / 行业": 50,
-    "软件的技术特点": 100,
+    "软件的技术特点": TECHNICAL_CHARACTERISTIC_LIMIT,
     "编程语言": 120,
 }
 ENUM_FIELDS = {
@@ -119,26 +122,26 @@ def application_field_value(md_path: Path, field_name: str) -> str:
 
 
 def main_function_issues(md_path: Path) -> list[str]:
-    """Validate 主要功能 against the 200-character form limit and the long-form backup."""
+    """Validate 主要功能 against the current form limits and the short-text backup."""
     issues: list[str] = []
     short = application_field_value(md_path, "软件的主要功能")
     detail = application_field_value(md_path, MAIN_FUNCTION_DETAIL_FIELD)
     mode = application_field_value(md_path, MAIN_FUNCTION_MODE_FIELD)
-    long_mode = any(key in mode for key in MAIN_FUNCTION_LONG_MODE_KEYS)
+    long_mode = main_function_is_long_mode(mode)
     if short and "待用户确认" not in short:
         count = effective_len(short)
         if long_mode:
             if count < MAIN_FUNCTION_LONG_MIN or count > MAIN_FUNCTION_LONG_MAX:
                 issues.append(
-                    f"➤软件的主要功能：当前 {count} 字；{MAIN_FUNCTION_MODE_FIELD}为长版时必须是 "
-                    f"{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字。"
+                    f"➤软件的主要功能：当前 {count} 字；官网当前要求 "
+                    f"{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字（汉字字符加标点），"
+                    f"{MAIN_FUNCTION_MODE_FIELD}未写短版时必须是长版。"
                 )
         elif count > MAIN_FUNCTION_SHORT_LIMIT:
             issues.append(
-                f"➤软件的主要功能：当前 {count} 字，超过官网 {MAIN_FUNCTION_SHORT_LIMIT} 字上限。"
-                f"请精简到 {MAIN_FUNCTION_SHORT_LIMIT} 字以内；如果本次表单要求 "
-                f"{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字长文本，请把"
-                f"{MAIN_FUNCTION_MODE_FIELD}改为“长版”，再把 {MAIN_FUNCTION_DETAIL_FIELD} 的内容填入该字段。"
+                f"➤软件的主要功能：当前 {count} 字，超过 {MAIN_FUNCTION_MODE_FIELD}=短版时"
+                f"{MAIN_FUNCTION_SHORT_LIMIT} 字的上限。官网当前要求 {MAIN_FUNCTION_LONG_MIN}~"
+                f"{MAIN_FUNCTION_LONG_MAX} 字：请改成长版正文，或把该字段换成 ≤{MAIN_FUNCTION_SHORT_LIMIT} 字的短文本。"
             )
     if detail and "待用户确认" not in detail:
         detail_count = effective_len(detail)
@@ -151,23 +154,36 @@ def main_function_issues(md_path: Path) -> list[str]:
 
 
 def technical_characteristic_issues(md_path: Path) -> list[str]:
-    """技术特点 accepts only the official multi-select tags."""
+    """技术特点 = 官网标签（可选）+ ≤100 字说明；说明里不写技术栈名称。"""
     value = application_field_value(md_path, "软件的技术特点")
     if not value or "待用户确认" in value:
         return []
-    tags = split_tag_values(value)
-    if not tags:
-        return ["➤软件的技术特点：必须至少选择一个官网标签。"]
+    tags, note = split_technical_characteristics(value)
+    issues: list[str] = []
     unknown = [tag for tag in tags if tag not in TECHNICAL_CHARACTERISTIC_TAGS]
-    if not unknown:
-        return []
-    return [
-        "➤软件的技术特点："
-        + "、".join(unknown)
-        + " 不在官网标签列表中。该字段只能从官网标签中选择，允许的标签为："
-        + "、".join(TECHNICAL_CHARACTERISTIC_TAGS)
-        + "。"
-    ]
+    if unknown:
+        issues.append(
+            "➤软件的技术特点："
+            + "、".join(unknown)
+            + " 不在官网标签列表中。允许的标签为："
+            + "、".join(TECHNICAL_CHARACTERISTIC_TAGS)
+            + "。"
+        )
+    if note:
+        count = effective_len(note)
+        if count > TECHNICAL_CHARACTERISTIC_LIMIT:
+            issues.append(
+                f"➤软件的技术特点：说明部分 {count} 字，超过官网 {TECHNICAL_CHARACTERISTIC_LIMIT} 字上限"
+                "（官网注：所列标签不计入这 100 个字符，所以标签写在「；」前面即可）。"
+            )
+        stack = [keyword for keyword in TECHNICAL_CHARACTERISTIC_STACK_KEYWORDS if keyword in note.lower()]
+        if stack:
+            issues.append(
+                "➤软件的技术特点：说明部分出现了技术栈名称（"
+                + "、".join(stack)
+                + "），该字段要写软件的技术能力，不是实现框架，请改成业务/技术特点表述。"
+            )
+    return issues
 
 
 def application_field_issues(md_path: Path) -> list[str]:

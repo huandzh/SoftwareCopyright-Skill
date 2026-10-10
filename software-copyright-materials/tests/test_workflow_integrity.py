@@ -21,6 +21,7 @@ from common import (  # noqa: E402
     confirmation_is_current,
     identity_issue,
     read_json,
+    split_technical_characteristics,
 )
 from confirm_stage import (
     REQUIRED_FIELDS,
@@ -189,14 +190,55 @@ class WorkflowIntegrityTests(unittest.TestCase):
             confirm_business(self.temp_dir, "确认")
         self.assertIn("不一致", str(raised.exception))
 
-    def test_main_function_defaults_to_two_hundred_characters(self) -> None:
+    def test_main_function_defaults_to_the_current_long_form_requirement(self) -> None:
         path = self.temp_dir / "申请表信息.md"
+
+        # 官网当前要求 500~1300 字；口径缺失时按长版校验，200 字短文本必须被拦下。
         path.write_text(f"➤软件的主要功能：{'功' * 200}\n", encoding="utf-8")
+        issues = main_function_issues(path)
+        self.assertTrue(any("500~1300" in issue for issue in issues))
+
+        path.write_text(f"➤软件的主要功能：{'功' * 800}\n", encoding="utf-8")
         self.assertEqual(main_function_issues(path), [])
 
-        path.write_text(f"➤软件的主要功能：{'功' * 260}\n", encoding="utf-8")
+    def test_short_mode_is_opt_in_and_keeps_the_two_hundred_character_limit(self) -> None:
+        path = self.temp_dir / "申请表信息.md"
+        path.write_text(
+            f"➤软件的主要功能：{'功' * 200}\n"
+            f"➤{MAIN_FUNCTION_MODE_FIELD}：短版（≤200字）\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(main_function_issues(path), [])
+
+        path.write_text(
+            f"➤软件的主要功能：{'功' * 260}\n"
+            f"➤{MAIN_FUNCTION_MODE_FIELD}：短版（≤200字）\n",
+            encoding="utf-8",
+        )
         issues = main_function_issues(path)
-        self.assertTrue(any("超过官网 200 字上限" in issue for issue in issues))
+        self.assertTrue(any("200" in issue and "上限" in issue for issue in issues))
+
+    def test_generated_application_defaults_to_the_long_main_function(self) -> None:
+        from generate_application_info import build_fields  # noqa: PLC0415
+
+        business = {"main_functions": "功" * 900, "main_functions_short": "短" * 150}
+        fields = build_fields({}, {}, "示例软件", "V1.0", {}, business)
+
+        self.assertEqual(fields[MAIN_FUNCTION_MODE_FIELD], "长版（500~1300字）")
+        self.assertEqual(fields["软件的主要功能"], "功" * 900)
+        self.assertEqual(fields[MAIN_FUNCTION_DETAIL_FIELD], "功" * 900)
+
+    def test_short_mode_uses_the_short_text_instead_of_a_truncated_long_one(self) -> None:
+        from generate_application_info import build_fields  # noqa: PLC0415
+
+        business = {"main_functions": "功" * 900, "main_functions_short": "短" * 150}
+        fields = build_fields(
+            {}, {}, "示例软件", "V1.0",
+            {MAIN_FUNCTION_MODE_FIELD: "短版（≤200字）"}, business,
+        )
+
+        self.assertEqual(fields["软件的主要功能"], "短" * 150)
+        self.assertEqual(fields[MAIN_FUNCTION_DETAIL_FIELD], "功" * 900)
 
     def test_long_form_mode_uses_the_backup_field(self) -> None:
         path = self.temp_dir / "申请表信息.md"
@@ -215,17 +257,56 @@ class WorkflowIntegrityTests(unittest.TestCase):
             encoding="utf-8",
         )
         issues = main_function_issues(path)
-        self.assertTrue(any("超过官网 200 字上限" in issue for issue in issues))
+        self.assertTrue(any("200" in issue and "上限" in issue for issue in issues))
         self.assertTrue(any(MAIN_FUNCTION_DETAIL_FIELD in issue for issue in issues))
 
-    def test_technical_characteristics_accept_only_official_tags(self) -> None:
+    def test_technical_characteristics_accept_tags_plus_a_short_note(self) -> None:
         path = self.temp_dir / "申请表信息.md"
+
         path.write_text("➤软件的技术特点：网页应用、云计算软件\n", encoding="utf-8")
         self.assertEqual(technical_characteristic_issues(path), [])
 
-        path.write_text("➤软件的技术特点：系统采用 Vue 构建前端界面\n", encoding="utf-8")
+        # 官网注：所列标签不计入 100 个字符，所以「标签；说明」都允许。
+        path.write_text(
+            "➤软件的技术特点：大数据软件、信息安全软件；离线单机部署，数据全部留在本机，"
+            "原始问卷在入库前完成脱敏与敏感列排查，支持多规则复核与大批量样本统计。\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(technical_characteristic_issues(path), [])
+
+    def test_technical_characteristic_note_is_limited_and_must_not_name_a_stack(self) -> None:
+        path = self.temp_dir / "申请表信息.md"
+
+        path.write_text(f"➤软件的技术特点：网页应用；{'能' * 120}\n", encoding="utf-8")
         issues = technical_characteristic_issues(path)
-        self.assertTrue(any("不在官网标签列表中" in issue for issue in issues))
+        self.assertTrue(any("100 字上限" in issue for issue in issues))
+
+        path.write_text(
+            "➤软件的技术特点：网页应用；系统采用 Vue + Tauri 构建，界面由 React 渲染\n",
+            encoding="utf-8",
+        )
+        issues = technical_characteristic_issues(path)
+        self.assertTrue(any("技术栈名称" in issue for issue in issues))
+
+    def test_unknown_technical_characteristic_tag_is_rejected(self) -> None:
+        path = self.temp_dir / "申请表信息.md"
+        path.write_text("➤软件的技术特点：自研框架、网页应用\n", encoding="utf-8")
+
+        issues = technical_characteristic_issues(path)
+
+        self.assertTrue(any("不在官网标签列表" in issue for issue in issues))
+
+    def test_technical_characteristics_accept_a_standalone_paragraph(self) -> None:
+        path = self.temp_dir / "申请表信息.md"
+        note = (
+            "离线单机部署，数据全部留在本机；原始问卷在入库前完成脱敏与疑似敏感列排查，"
+            "质控规则可配置复核、订正留痕，支持多源表格导入与大批量样本统计。"
+        )
+        path.write_text(f"➤软件的技术特点：{note}\n", encoding="utf-8")
+
+        self.assertEqual(technical_characteristic_issues(path), [])
+        # 段落里出现「；」时不能被误判成「标签；说明」的前半段
+        self.assertEqual(split_technical_characteristics(note)[0], [])
 
     def test_final_build_requires_the_software_name_gate(self) -> None:
         from build_docx_from_md import confirmation_issues  # noqa: PLC0415

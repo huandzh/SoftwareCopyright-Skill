@@ -288,15 +288,43 @@ CODE_SLICE_PAGES_DEFAULT = 40
 # the default is 40 + 40. Keep both options so a project can switch back.
 CODE_SLICE_PAGE_NOTE = "官网表单写前后各 30 页；本 flavour 走中间代理，默认前后各 40 页（多提供 20 页）"
 
-# Application form field rules (2026 form: 主要功能 is limited to 200 characters).
+# Application form field rules. The current official form asks for
+# 主要功能 500~1300 字（汉字字符加标点）and 技术特点 ≤100 字（标签不计入），
+# so the long text is the default and the ≤200 字 short text is opt-in only.
 MAIN_FUNCTION_SHORT_LIMIT = 200
 MAIN_FUNCTION_LONG_MIN = 500
 MAIN_FUNCTION_LONG_MAX = 1300
 MAIN_FUNCTION_DETAIL_FIELD = "软件的主要功能（详细版）"
 MAIN_FUNCTION_MODE_FIELD = "主要功能口径"
+TECHNICAL_CHARACTERISTIC_LIMIT = 100
+
+# 「主要功能口径」只有短版（≤200 字）是例外：口径缺失、留空或写成别的值时，
+# 一律按官网当前要求的长版（500~1300 字）校验，避免短文本被默认放行。
+MAIN_FUNCTION_SHORT_MODE_KEYS = ("短版", "短文本", "≤200", "200 字")
+MAIN_FUNCTION_LONG_MODE_KEYS = ("长版", "详细", "500", "1300")
+
+
+def main_function_is_long_mode(mode: Any) -> bool:
+    """Return False only when the 口径 field explicitly asks for the short text."""
+    text = str(mode or "")
+    return not any(key in text for key in MAIN_FUNCTION_SHORT_MODE_KEYS)
 
 # Official 技术特点 multi-select tags. The list is copied from the form the
 # project owner submitted; refresh it when the official list changes.
+#
+# 官网注：技术特点为「汉字字符加标点100个以内，所列15个选择跟软件相关的，
+# 不在100个字符」—— 也就是「标签 + 一段说明」都允许，只有说明部分受 100 字
+# 限制。说明写软件的技术能力，不要写框架/技术栈名称（Tauri、React、SQLite…），
+# 那些是实现细节，不是登记表要看的技术特点。
+TECHNICAL_CHARACTERISTIC_STACK_KEYWORDS = (
+    "react", "vue", "angular", "svelte", "tauri", "electron", "vite", "next.js",
+    "typescript", "javascript", "node.js", "npm", "pnpm", "fastapi", "uvicorn",
+    "python", "sqlite", "pandas", "pyinstaller", "webview2", "rust",
+)
+
+# 没有「；」分隔符、又不全是官网标签时：长于这个字数就当成一整段说明，
+# 否则仍按标签区处理，好让「自研框架、网页应用」这类伪标签继续报错。
+TECHNICAL_CHARACTERISTIC_PLAIN_NOTE_MIN = 30
 TECHNICAL_CHARACTERISTIC_TAGS = (
     "APP",
     "VR软件",
@@ -315,6 +343,37 @@ TECHNICAL_CHARACTERISTIC_TAGS = (
     "游戏软件",
     "金融软件",
 )
+
+
+def split_technical_characteristics(value: Any) -> tuple[list[str], str]:
+    """Split 技术特点 into its leading official tags and the free-text note.
+
+    允许的三种写法：
+      - ``大数据软件、信息安全软件``                  → 纯标签
+      - ``大数据软件、信息安全软件；离线单机部署，…``   → 标签 + 说明（推荐）
+      - ``离线单机部署，数据全部留在本机，…``           → 纯说明（整段较长时按说明处理）
+
+    「；」是标签区与说明区的分隔符，但只有前半段**全部**是官网标签时才这么切；
+    否则整段按说明处理（说明里出现「；」不会被误判成标签）。没有分隔符且不是
+    官方标签列表时：长文本按说明处理，短文本按标签区处理，这样「自研框架、网页应用」
+    仍会被当成不在官网标签列表里报错。
+    """
+    text = str(value or "").strip()
+    if not text:
+        return [], ""
+    for separator in ("；", ";"):
+        if separator in text:
+            head, tail = text.split(separator, 1)
+            head_tokens = [tag for tag in split_tag_values(head) if tag]
+            if head_tokens and all(token in TECHNICAL_CHARACTERISTIC_TAGS for token in head_tokens):
+                return head_tokens, tail.strip()
+            break
+    tokens = [tag for tag in split_tag_values(text) if tag]
+    if tokens and all(token in TECHNICAL_CHARACTERISTIC_TAGS for token in tokens):
+        return tokens, ""
+    if len(text) > TECHNICAL_CHARACTERISTIC_PLAIN_NOTE_MIN:
+        return [], text
+    return tokens, ""
 
 IDENTITY_FILE_NAME = "软件名称确认.json"
 IDENTITY_APPEARANCES = (

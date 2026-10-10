@@ -17,17 +17,26 @@ from common import (
     MAIN_FUNCTION_LONG_MIN,
     MAIN_FUNCTION_MODE_FIELD,
     MAIN_FUNCTION_SHORT_LIMIT,
+    TECHNICAL_CHARACTERISTIC_LIMIT,
+    TECHNICAL_CHARACTERISTIC_STACK_KEYWORDS,
     TECHNICAL_CHARACTERISTIC_TAGS,
     ensure_dir,
+    main_function_is_long_mode,
     read_json,
     read_text,
     split_tag_values,
+    split_technical_characteristics,
 )
 
 
 MAIN_FUNCTION_SHORT_MODE = "短版（≤200字）"
 MAIN_FUNCTION_LONG_MODE = "长版（500~1300字）"
-MAIN_FUNCTION_LONG_MODE_KEYS = ("长版", "详细", "500", "1300")
+
+# 官网申请表当前对「主要功能」的要求是 500~1300 字，正文依据是正式资料里的
+# .doc 模板注：“主要功能 （注：汉字字符加标点500字到1300个以内）”。因此默认
+# 直接输出长版文本；短版（≤200 字）只为仍收短文本的旧表单保留，需要时由用户
+# 把口径字段改成短版 —— 不要用“把长文本截断到 200 字”来代替短版文本。
+MAIN_FUNCTION_DEFAULT_MODE = MAIN_FUNCTION_LONG_MODE
 
 
 FIELD_ORDER = [
@@ -220,14 +229,26 @@ def summarize_detail_features(analysis: dict[str, Any], software_name: str, busi
 
 
 def technical_characteristics_default(business: dict[str, Any] | None) -> str:
-    """技术特点 must be chosen from the official tag list, never free text."""
+    """技术特点 = 官网标签（可选）+ ≤100 字说明；标签写在「；」前面。"""
     if business:
         provided = business.get("technical_characteristics")
         tags = provided if isinstance(provided, list) else split_tag_values(provided)
         known = [clean_text(tag) for tag in tags if clean_text(tag) in TECHNICAL_CHARACTERISTIC_TAGS]
+        note = clean_text(business.get("technical_characteristics_note"))
+        if note and effective_len(note) > TECHNICAL_CHARACTERISTIC_LIMIT:
+            note = trim_to_sentence(note, TECHNICAL_CHARACTERISTIC_LIMIT)
+        parts: list[str] = []
         if known:
-            return "、".join(known)
-    return "待用户确认（请从官网标签中选择：" + "、".join(TECHNICAL_CHARACTERISTIC_TAGS) + "）"
+            parts.append("、".join(known))
+        if note:
+            parts.append(note)
+        if parts:
+            return "；".join(parts)
+    return (
+        "待用户确认（请从官网标签中选择："
+        + "、".join(TECHNICAL_CHARACTERISTIC_TAGS)
+        + "；可在「；」后补一段 100 字以内的技术特点说明）"
+    )
 
 
 def summarize_features(analysis: dict[str, Any], software_name: str, business: dict[str, Any] | None = None) -> str:
@@ -397,6 +418,8 @@ def build_fields(
     dev_os_hint = current_operating_system()
     version_hint = version_confirmation_hint(analysis, version)
     software_name_hint = f"待用户确认（建议：{software_name}；请确认最终软件全称）"
+    short_text = summarize_short_features(analysis, software_name, business)
+    long_text = summarize_detail_features(analysis, software_name, business)
 
     defaults = {
         "软件全称": software_name_hint,
@@ -421,9 +444,9 @@ def build_fields(
         "源程序量": str(total_source_line_count(analysis, manifest)),
         "开发目的": (business.get("application_purpose") or f"待用户确认（≤50字符，需说明开发目的，不能只写软件名称）") if business else "待用户确认（≤50字符，需说明开发目的，不能只写软件名称）",
         "面向领域 / 行业": (business.get("industry") or "待用户确认") if business else "待用户确认",
-        "软件的主要功能": summarize_short_features(analysis, software_name, business),
-        MAIN_FUNCTION_MODE_FIELD: MAIN_FUNCTION_SHORT_MODE,
-        MAIN_FUNCTION_DETAIL_FIELD: summarize_detail_features(analysis, software_name, business),
+        "软件的主要功能": long_text if MAIN_FUNCTION_DEFAULT_MODE == MAIN_FUNCTION_LONG_MODE else short_text,
+        MAIN_FUNCTION_MODE_FIELD: MAIN_FUNCTION_DEFAULT_MODE,
+        MAIN_FUNCTION_DETAIL_FIELD: long_text,
         "软件的技术特点": technical_characteristics_default(business),
         "页数": str(submitted_code_page_count(manifest)),
     }
@@ -435,16 +458,23 @@ def build_fields(
         if "待用户确认" in defaults.get("首次发表日期", "") or not defaults.get("首次发表日期", "").strip():
             defaults["首次发表日期"] = ""
 
-    # 主要功能口径为长版时，把备用详细版内容放进官网字段
+    # 口径决定官网「主要功能」字段装哪一版：长版用详细版正文（默认），短版回落到
+    # 按业务理解生成的 ≤200 字短文本。不要把长文本截断后当短版使用。
+    provided_main = clean_text(answers.get("软件的主要功能")) if answers else ""
     mode = defaults.get(MAIN_FUNCTION_MODE_FIELD, "")
-    if any(key in mode for key in MAIN_FUNCTION_LONG_MODE_KEYS):
+    if main_function_is_long_mode(mode):
         detail = defaults.get(MAIN_FUNCTION_DETAIL_FIELD, "")
         if detail and "待用户确认" not in detail:
             defaults["软件的主要功能"] = detail
+        elif provided_main:
+            defaults["软件的主要功能"] = provided_main
+        else:
+            defaults["软件的主要功能"] = long_text
     else:
-        short = defaults.get("软件的主要功能", "")
-        if short and "待用户确认" not in short:
-            defaults["软件的主要功能"] = trim_to_sentence(short, MAIN_FUNCTION_SHORT_LIMIT)
+        primary = provided_main or short_text
+        if primary and "待用户确认" not in primary:
+            primary = trim_to_sentence(primary, MAIN_FUNCTION_SHORT_LIMIT)
+        defaults["软件的主要功能"] = primary
 
     return defaults
 
@@ -725,20 +755,21 @@ def write_application_md(path: Path, fields: dict[str, str], analysis: dict[str,
 
     main_func = fields.get("软件的主要功能", "")
     main_mode = str(fields.get(MAIN_FUNCTION_MODE_FIELD, ""))
-    long_mode = any(key in main_mode for key in MAIN_FUNCTION_LONG_MODE_KEYS)
+    long_mode = main_function_is_long_mode(main_mode)
     if main_func and "待用户确认" not in main_func:
         func_len = effective_len(main_func)
         if long_mode:
             if not MAIN_FUNCTION_LONG_MIN <= func_len <= MAIN_FUNCTION_LONG_MAX:
                 warnings.append(
-                    f"软件的主要功能共 {func_len} 字；{MAIN_FUNCTION_MODE_FIELD}为长版时需为 "
-                    f"{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字。"
+                    f"软件的主要功能共 {func_len} 字；官网当前要求 "
+                    f"{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字（汉字字符加标点），"
+                    f"{MAIN_FUNCTION_MODE_FIELD}未写短版时必须落在这个区间。"
                 )
         elif func_len > MAIN_FUNCTION_SHORT_LIMIT:
             warnings.append(
-                f"软件的主要功能共 {func_len} 字，超过官网 {MAIN_FUNCTION_SHORT_LIMIT} 字上限；"
-                f"如本次表单需要 {MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字，请把"
-                f"{MAIN_FUNCTION_MODE_FIELD}改为长版。"
+                f"软件的主要功能共 {func_len} 字，超过短版 {MAIN_FUNCTION_SHORT_LIMIT} 字上限；"
+                f"官网当前要求 {MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字，"
+                f"请改用长版正文，或换成 ≤{MAIN_FUNCTION_SHORT_LIMIT} 字的短文本。"
             )
         elif func_len < 120:
             warnings.append(
@@ -752,18 +783,32 @@ def write_application_md(path: Path, fields: dict[str, str], analysis: dict[str,
                 f"{MAIN_FUNCTION_DETAIL_FIELD}共 {detail_len} 字，应为 "
                 f"{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字。"
             )
-    tech_tags = split_tag_values(fields.get("软件的技术特点", ""))
+    tech_tags, tech_note = split_technical_characteristics(fields.get("软件的技术特点", ""))
     unknown_tags = [tag for tag in tech_tags if tag not in TECHNICAL_CHARACTERISTIC_TAGS]
     if unknown_tags:
         warnings.append(
-            "软件的技术特点只能从官网标签中选择，以下内容不是官网标签："
+            "软件的技术特点里以下内容不在官网标签列表中："
             + "、".join(unknown_tags)
             + "。可选标签："
             + "、".join(TECHNICAL_CHARACTERISTIC_TAGS)
             + "。"
         )
+    if tech_note:
+        note_len = effective_len(tech_note)
+        if note_len > TECHNICAL_CHARACTERISTIC_LIMIT:
+            warnings.append(
+                f"软件的技术特点说明部分共 {note_len} 字，超过 {TECHNICAL_CHARACTERISTIC_LIMIT} 字上限"
+                "（官网注：所列标签不计入这 100 个字符，说明写在「；」后面即可）。"
+            )
+        stack = [keyword for keyword in TECHNICAL_CHARACTERISTIC_STACK_KEYWORDS if keyword in tech_note.lower()]
+        if stack:
+            warnings.append(
+                "软件的技术特点说明部分出现了技术栈名称（"
+                + "、".join(stack)
+                + "），该字段描述的是软件技术特点，建议改成技术能力表述。"
+            )
 
-    # Check character limits for fields with ≤50 or ≤100 constraints
+    # 官网对 50 字字段与 100 字字段的限制（技术特点注：汉字字符加标点 100 个以内）
     char_limit_fields = {
         "开发的硬件环境": 50,
         "运行的硬件环境": 50,
@@ -773,7 +818,6 @@ def write_application_md(path: Path, fields: dict[str, str], analysis: dict[str,
         "软件运行支撑环境 / 支持软件": 50,
         "开发目的": 50,
         "面向领域 / 行业": 50,
-        "软件的技术特点": 100,
     }
     for field_name, limit in char_limit_fields.items():
         value = fields.get(field_name, "")
@@ -801,10 +845,10 @@ def write_application_md(path: Path, fields: dict[str, str], analysis: dict[str,
             "- 源程序量：纯数字（不含'行'字），指全部源程序的总行数。",
             "- 开发目的：≤50字符，用一句话说明目的，不能只写软件名称。",
             "- 面向领域 / 行业：≤50字符。",
-            f"- 软件的主要功能：≤{MAIN_FUNCTION_SHORT_LIMIT} 字（官网当前字段限制），默认使用短版；不足 150 字建议补写。",
-            f"- {MAIN_FUNCTION_MODE_FIELD}：短版（≤200字）或长版（500~1300字）。表单要求长文本时改为长版，脚本会把详细版内容填进“软件的主要功能”。",
-            f"- {MAIN_FUNCTION_DETAIL_FIELD}：500~1300 字备用文本，官网字段只收 200 字时不要填到上面去。",
-            "- 软件的技术特点：只能从官网标签中选择，可用标签：" + "、".join(TECHNICAL_CHARACTERISTIC_TAGS) + "。",
+            f"- 软件的主要功能：官网当前要求 {MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字（汉字字符加标点），默认填长版正文；不足 {MAIN_FUNCTION_LONG_MIN} 字或超过 {MAIN_FUNCTION_LONG_MAX} 字都会被门禁拦下。",
+            f"- {MAIN_FUNCTION_MODE_FIELD}：长版（500~1300字，默认）或短版（≤200字）。改成短版时脚本会把简短版文本填进“软件的主要功能”，长版文本仍保留在详细版字段。",
+            f"- {MAIN_FUNCTION_DETAIL_FIELD}：{MAIN_FUNCTION_LONG_MIN}~{MAIN_FUNCTION_LONG_MAX} 字长版正文；口径为长版时与“软件的主要功能”内容一致。",
+            f"- 软件的技术特点：官网标签（可多选，用「、」连接，标签不计入 100 字上限）+ 一段 ≤{TECHNICAL_CHARACTERISTIC_LIMIT} 字的说明，两者用「；」分隔；说明写技术特点，不要写框架/技术栈名称。可用标签：" + "、".join(TECHNICAL_CHARACTERISTIC_TAGS) + "。",
             "",
             "## 项目分析摘要",
             "",
